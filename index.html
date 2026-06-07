@@ -813,6 +813,279 @@
         max-width: 150px;
       }
     }
+
+    /* Компактные диалоги и результаты поиска */
+    .user-card,
+    .chat-list-item {
+      gap: 5px !important;
+    }
+
+    .user-card {
+      min-height: 50px !important;
+      padding: 6px 7px !important;
+    }
+
+    .user-card .avatar,
+    .user-card .default-avatar,
+    .chat-list-avatar,
+    .chat-list-item .default-avatar {
+      width: 34px !important;
+      height: 34px !important;
+      flex-basis: 34px !important;
+    }
+
+    .user-card-name,
+    .chat-list-text {
+      margin-left: 0 !important;
+    }
+
+    .checks {
+      min-width: auto !important;
+      margin-left: 3px;
+      letter-spacing: -3px;
+      transform: none !important;
+    }
+
+    .reply-quote {
+      margin-bottom: 6px;
+      padding: 5px 8px;
+      border-left: 2px solid currentColor;
+      border-radius: 7px;
+      background: rgba(255,255,255,.065);
+      opacity: .78;
+      font-size: 12px;
+      line-height: 1.25;
+      overflow: hidden;
+    }
+
+    .message-row.me .reply-quote {
+      background: rgba(0,0,0,.06);
+    }
+
+    .reply-name {
+      display: block;
+      margin-bottom: 2px;
+      font-weight: 750;
+    }
+
+    .reply-text {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 230px;
+    }
+
+    .message-reactions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .reaction-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      min-height: 24px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.09);
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    .message-row.me .reaction-chip {
+      background: rgba(0,0,0,.08);
+    }
+
+    .reaction-chip.mine {
+      outline: 1px solid currentColor;
+    }
+
+    .composer-reply {
+      display: none;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 7px;
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: #1b1b1b;
+    }
+
+    .composer-reply.visible {
+      display: flex;
+    }
+
+    .composer-reply-line {
+      width: 3px;
+      align-self: stretch;
+      border-radius: 99px;
+      background: #d7d7d7;
+    }
+
+    .composer-reply-content {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .composer-reply-name {
+      color: #e4e4e4;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .composer-reply-text {
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .composer-reply-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #bdbdbd;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .message-menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      visibility: hidden;
+      opacity: 0;
+      padding: 16px max(16px, env(safe-area-inset-right))
+        calc(16px + env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+      background: rgba(0,0,0,.56);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      transition: opacity .16s ease, visibility .16s ease;
+    }
+
+    .message-menu-overlay.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .message-menu {
+      width: 100%;
+      max-width: 420px;
+      padding: 8px;
+      border: 1px solid #303030;
+      border-radius: 22px;
+      background: #1b1b1b;
+      box-shadow: var(--shadow);
+      transform: translateY(18px);
+      transition: transform .18s ease;
+    }
+
+    .message-menu-overlay.visible .message-menu {
+      transform: translateY(0);
+    }
+
+    .reaction-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+      padding: 4px 2px 8px;
+    }
+
+    .reaction-button {
+      min-height: 42px;
+      border-radius: 13px;
+      font-size: 22px;
+    }
+
+    .reaction-button:active {
+      background: #292929;
+      transform: scale(.92);
+    }
+
+    .message-action {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      border-radius: 13px;
+      color: var(--text);
+      text-align: left;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .message-action:active {
+      background: #272727;
+    }
+
+    .message-action.danger {
+      color: #ff7773;
+    }
+
+    .media-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      visibility: hidden;
+      opacity: 0;
+      padding: max(18px, env(safe-area-inset-top))
+        max(18px, env(safe-area-inset-right))
+        max(18px, env(safe-area-inset-bottom))
+        max(18px, env(safe-area-inset-left));
+      background: rgba(0,0,0,.94);
+      transition: opacity .18s ease, visibility .18s ease;
+    }
+
+    .media-viewer.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .media-viewer-image {
+      max-width: 100%;
+      max-height: calc(100dvh - 120px);
+      object-fit: contain;
+      border-radius: 12px;
+    }
+
+    .media-viewer-top {
+      position: absolute;
+      top: max(12px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .media-viewer-button {
+      display: grid;
+      place-items: center;
+      min-width: 42px;
+      height: 42px;
+      padding: 0 13px;
+      border-radius: 14px;
+      background: rgba(35,35,35,.88);
+      color: #f2f2f2;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .bubble-media.image-attachment {
+      cursor: zoom-in;
+    }
+
   </style>
 </head>
 
@@ -889,6 +1162,15 @@
       <div id="messages" class="messages"></div>
 
       <footer class="composer-wrap">
+        <div id="composerReply" class="composer-reply">
+          <div class="composer-reply-line"></div>
+          <div class="composer-reply-content">
+            <div id="composerReplyName" class="composer-reply-name"></div>
+            <div id="composerReplyText" class="composer-reply-text"></div>
+          </div>
+          <button id="clearReplyButton" class="composer-reply-close" type="button" aria-label="Убрать ответ">×</button>
+        </div>
+
         <div id="attachmentPreview" class="attachment-preview">
           <span id="attachmentName"></span>
           <button id="clearAttachmentButton" type="button">×</button>
@@ -954,6 +1236,30 @@
     </div>
   </div>
 
+
+  <div id="messageMenuOverlay" class="message-menu-overlay">
+    <div class="message-menu">
+      <div class="reaction-row">
+        <button class="reaction-button" type="button" data-reaction="👍">👍</button>
+        <button class="reaction-button" type="button" data-reaction="❤️">❤️</button>
+        <button class="reaction-button" type="button" data-reaction="😂">😂</button>
+        <button class="reaction-button" type="button" data-reaction="😮">😮</button>
+        <button class="reaction-button" type="button" data-reaction="😢">😢</button>
+        <button class="reaction-button" type="button" data-reaction="🔥">🔥</button>
+      </div>
+      <button id="replyMessageButton" class="message-action" type="button">Ответить</button>
+      <button id="deleteMessageButton" class="message-action danger hidden" type="button">Удалить у всех</button>
+    </div>
+  </div>
+
+  <div id="mediaViewer" class="media-viewer">
+    <div class="media-viewer-top">
+      <button id="closeMediaViewer" class="media-viewer-button" type="button">Закрыть</button>
+      <a id="saveMediaButton" class="media-viewer-button" href="#" download>Сохранить</a>
+    </div>
+    <img id="mediaViewerImage" class="media-viewer-image" src="" alt="">
+  </div>
+
   <script type="module">
     const firebaseConfig = {
       apiKey: "AIzaSyCtHhJRd1NaQKqyfiAJm2GJI5NI2h7W3AI",
@@ -987,6 +1293,7 @@
       limit,
       onSnapshot,
       addDoc,
+      deleteDoc,
       serverTimestamp,
       runTransaction,
       arrayUnion
@@ -1015,6 +1322,11 @@
     let typingTimer = null;
     let typingStopTimer = null;
     let selectedAttachment = null;
+    let replyTarget = null;
+    let currentMessages = new Map();
+    let contextMessageId = null;
+    let longPressTimer = null;
+    let longPressStart = null;
     let audioContext = null;
     let soundEnabled = localStorage.getItem("messengerSoundEnabled") !== "false";
 
@@ -1401,7 +1713,6 @@
       list.innerHTML = "";
 
       const visibleChats = chats
-        .filter((chat) => chat.lastMessage)
         .sort((a, b) => {
           const aTime = a.updatedAt?.toMillis?.() || 0;
           const bTime = b.updatedAt?.toMillis?.() || 0;
@@ -1437,10 +1748,10 @@
         item.className = "chat-list-item";
 
         item.innerHTML = `
-          ${avatarHtml(peer, "chat-list-avatar", 40)}
+          ${avatarHtml(peer, "chat-list-avatar", 34)}
           <div class="chat-list-text">
             <div class="chat-list-name">${escapeHtml(peer.username)}</div>
-            <div class="chat-list-preview">${escapeHtml(chat.lastMessage || "")}</div>
+            <div class="chat-list-preview">${escapeHtml(chat.lastMessage || "Диалог")}</div>
           </div>
           <div class="chat-list-time">${formatListTime(chat.updatedAt)}</div>
         `;
@@ -1459,7 +1770,7 @@
 
       const chatsQuery = query(
         collection(db, "chats"),
-        where(`memberMap.${currentUser.uid}`, "==", true)
+        where("members", "array-contains", currentUser.uid)
       );
 
       chatListUnsubscribe = onSnapshot(
@@ -1495,7 +1806,7 @@
       card.type = "button";
       card.className = "user-card";
       card.innerHTML = `
-        ${avatarHtml(profile, "avatar", 40)}
+        ${avatarHtml(profile, "avatar", 34)}
         <div class="user-card-name">${escapeHtml(profile.username)}</div>
       `;
 
@@ -1672,6 +1983,9 @@
 
       activePeer = null;
       activeChatId = null;
+      currentMessages.clear();
+      clearReply();
+      closeMessageMenu();
 
       $("chatScreen").classList.remove("visible");
       document.body.style.overflow = "";
@@ -1706,7 +2020,12 @@
 
     function renderMessages(messages) {
       const container = $("messages");
-      const shouldStick = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+      const shouldStick =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 140;
+
+      currentMessages = new Map(
+        messages.map((message) => [message.id, message])
+      );
 
       container.innerHTML = "";
 
@@ -1715,33 +2034,59 @@
         const row = document.createElement("div");
 
         row.className = `message-row ${isMine ? "me" : "other"}`;
+        row.dataset.messageId = message.id;
 
-        const seen = Array.isArray(message.seenBy) && activePeer
-          ? message.seenBy.includes(activePeer.uid)
-          : false;
+        const seen =
+          Array.isArray(message.seenBy) &&
+          activePeer &&
+          message.seenBy.includes(activePeer.uid);
 
         const checks = isMine
           ? `<span class="checks">${seen ? "✓✓" : "✓"}</span>`
           : "";
 
         const media = message.attachment?.data
-          ? renderMessageAttachment(message.attachment)
+          ? renderMessageAttachment(message.attachment, message.id)
           : "";
 
-        const text = message.text
-          ? `<div class="bubble-text">${escapeHtml(message.text)}</div>`
+        const textContent = message.text
+          ? `<span class="bubble-text">${escapeHtml(message.text)}</span>`
           : "";
+
+        const reply = message.reply
+          ? `
+            <div class="reply-quote" data-reply-id="${escapeHtml(message.reply.id || "")}">
+              <span class="reply-name">${escapeHtml(
+                message.reply.senderId === currentUser.uid
+                  ? "Вы"
+                  : activePeer?.username || "Пользователь"
+              )}</span>
+              <span class="reply-text">${escapeHtml(
+                message.reply.text ||
+                (message.reply.attachmentType?.startsWith("image/")
+                  ? "Фотография"
+                  : message.reply.attachmentType?.startsWith("video/")
+                    ? "Видео"
+                    : "Сообщение")
+              )}</span>
+            </div>
+          `
+          : "";
+
+        const reactions = renderReactions(message);
 
         row.innerHTML = `
           <div class="bubble">
+            ${reply}
             ${media}
-            ${text}<div class="meta">
-              <span>${formatTime(message.createdAt)}</span>
-              ${checks}
-            </div>
+            <div class="bubble-line">${textContent}<span class="meta">
+              <span>${formatTime(message.createdAt)}</span>${checks}
+            </span></div>
+            ${reactions}
           </div>
         `;
 
+        attachMessageInteractions(row, message);
         container.appendChild(row);
       }
 
@@ -1752,11 +2097,120 @@
       }
     }
 
-    function renderMessageAttachment(attachment) {
+    function renderReactions(message) {
+      const reactions = message.reactions || {};
+      const chips = [];
+
+      for (const [emoji, userIds] of Object.entries(reactions)) {
+        if (!Array.isArray(userIds) || userIds.length === 0) continue;
+
+        const mine = userIds.includes(currentUser.uid);
+
+        chips.push(`
+          <button
+            class="reaction-chip ${mine ? "mine" : ""}"
+            type="button"
+            data-message-id="${escapeHtml(message.id)}"
+            data-reaction="${escapeHtml(emoji)}"
+          >
+            <span>${escapeHtml(emoji)}</span>
+            <span>${userIds.length}</span>
+          </button>
+        `);
+      }
+
+      return chips.length
+        ? `<div class="message-reactions">${chips.join("")}</div>`
+        : "";
+    }
+
+    function attachMessageInteractions(row, message) {
+      row.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        openMessageMenu(message.id);
+      });
+
+      row.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+
+        longPressStart = {
+          x: event.clientX,
+          y: event.clientY
+        };
+
+        window.clearTimeout(longPressTimer);
+        longPressTimer = window.setTimeout(() => {
+          openMessageMenu(message.id);
+          if (navigator.vibrate) navigator.vibrate(25);
+        }, 520);
+      });
+
+      row.addEventListener("pointermove", (event) => {
+        if (!longPressStart) return;
+
+        const distance = Math.hypot(
+          event.clientX - longPressStart.x,
+          event.clientY - longPressStart.y
+        );
+
+        if (distance > 10) {
+          window.clearTimeout(longPressTimer);
+          longPressStart = null;
+        }
+      });
+
+      const stopLongPress = () => {
+        window.clearTimeout(longPressTimer);
+        longPressStart = null;
+      };
+
+      row.addEventListener("pointerup", stopLongPress);
+      row.addEventListener("pointercancel", stopLongPress);
+      row.addEventListener("pointerleave", stopLongPress);
+
+      row.querySelectorAll(".reaction-chip").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleReaction(
+            button.dataset.messageId,
+            button.dataset.reaction
+          );
+        });
+      });
+
+      row.querySelectorAll(".reply-quote").forEach((quote) => {
+        quote.addEventListener("click", () => {
+          const target = containerMessageElement(quote.dataset.replyId);
+          target?.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+        });
+      });
+    }
+
+    function containerMessageElement(messageId) {
+      if (!messageId) return null;
+
+      return $("messages").querySelector(
+        `[data-message-id="${CSS.escape(messageId)}"]`
+      );
+    }
+
+    function renderMessageAttachment(attachment, messageId) {
       const safeName = escapeHtml(attachment.name || "file");
 
       if (attachment.type?.startsWith("image/")) {
-        return `<img class="bubble-media" src="${attachment.data}" alt="${safeName}">`;
+        return `
+          <img
+            class="bubble-media image-attachment"
+            src="${attachment.data}"
+            alt="${safeName}"
+            data-image-src="${attachment.data}"
+            data-image-name="${safeName}"
+            data-message-id="${escapeHtml(messageId)}"
+          >
+        `;
       }
 
       if (attachment.type?.startsWith("video/")) {
@@ -1764,6 +2218,173 @@
       }
 
       return `<div class="bubble-text">${safeName}</div>`;
+    }
+
+    function openMessageMenu(messageId) {
+      const message = currentMessages.get(messageId);
+
+      if (!message) return;
+
+      contextMessageId = messageId;
+
+      $("deleteMessageButton").classList.toggle(
+        "hidden",
+        message.senderId !== currentUser.uid
+      );
+
+      $("messageMenuOverlay").classList.add("visible");
+      playOpenSound();
+    }
+
+    function closeMessageMenu() {
+      contextMessageId = null;
+      $("messageMenuOverlay").classList.remove("visible");
+    }
+
+    function setReplyTarget(message) {
+      replyTarget = message;
+
+      $("composerReplyName").textContent =
+        message.senderId === currentUser.uid
+          ? "Вы"
+          : activePeer?.username || "Пользователь";
+
+      $("composerReplyText").textContent =
+        message.text ||
+        (message.attachment?.type?.startsWith("image/")
+          ? "Фотография"
+          : message.attachment?.type?.startsWith("video/")
+            ? "Видео"
+            : "Сообщение");
+
+      $("composerReply").classList.add("visible");
+      $("messageInput").focus();
+    }
+
+    function clearReply() {
+      replyTarget = null;
+      $("composerReply").classList.remove("visible");
+      $("composerReplyName").textContent = "";
+      $("composerReplyText").textContent = "";
+    }
+
+    async function toggleReaction(messageId, emoji) {
+      if (!activeChatId || !messageId || !emoji) return;
+
+      const message = currentMessages.get(messageId);
+
+      if (!message) return;
+
+      const reactions = structuredClone(message.reactions || {});
+      const users = Array.isArray(reactions[emoji])
+        ? [...reactions[emoji]]
+        : [];
+
+      const index = users.indexOf(currentUser.uid);
+
+      if (index >= 0) {
+        users.splice(index, 1);
+      } else {
+        users.push(currentUser.uid);
+      }
+
+      if (users.length) {
+        reactions[emoji] = users;
+      } else {
+        delete reactions[emoji];
+      }
+
+      try {
+        await updateDoc(
+          doc(db, "chats", activeChatId, "messages", messageId),
+          {
+            reactions,
+            reactionsUpdatedAt: serverTimestamp()
+          }
+        );
+
+        playClick();
+      } catch (error) {
+        alert(getReadableError(error));
+      }
+    }
+
+    async function deleteSelectedMessage() {
+      if (!contextMessageId || !activeChatId) return;
+
+      const message = currentMessages.get(contextMessageId);
+
+      if (!message || message.senderId !== currentUser.uid) {
+        closeMessageMenu();
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "Удалить сообщение у вас и у собеседника?"
+      );
+
+      if (!confirmed) return;
+
+      const deletingId = contextMessageId;
+      closeMessageMenu();
+
+      try {
+        await deleteDoc(
+          doc(db, "chats", activeChatId, "messages", deletingId)
+        );
+
+        const remaining = [...currentMessages.values()]
+          .filter((item) => item.id !== deletingId)
+          .sort((a, b) => {
+            const aTime = a.createdAt?.toMillis?.() || 0;
+            const bTime = b.createdAt?.toMillis?.() || 0;
+            return bTime - aTime;
+          });
+
+        const latest = remaining[0];
+
+        await setDoc(
+          doc(db, "chats", activeChatId),
+          {
+            lastMessage: latest
+              ? latest.text ||
+                (latest.attachment?.type?.startsWith("image/")
+                  ? "Фотография"
+                  : latest.attachment?.type?.startsWith("video/")
+                    ? "Видео"
+                    : "Вложение")
+              : "",
+            lastSenderId: latest?.senderId || "",
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        if (replyTarget?.id === deletingId) {
+          clearReply();
+        }
+
+        playCloseSound();
+      } catch (error) {
+        alert(getReadableError(error));
+      }
+    }
+
+    function openImageViewer(src, name = "image") {
+      $("mediaViewerImage").src = src;
+      $("saveMediaButton").href = src;
+      $("saveMediaButton").download = name || "image";
+      $("mediaViewer").classList.add("visible");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeImageViewer() {
+      $("mediaViewer").classList.remove("visible");
+      $("mediaViewerImage").src = "";
+
+      if (!$("chatScreen").classList.contains("visible")) {
+        document.body.style.overflow = "";
+      }
     }
 
     async function markMessagesRead(messageDocs) {
@@ -1817,6 +2438,15 @@
           message.attachment = selectedAttachment;
         }
 
+        if (replyTarget) {
+          message.reply = {
+            id: replyTarget.id,
+            senderId: replyTarget.senderId,
+            text: replyTarget.text || "",
+            attachmentType: replyTarget.attachment?.type || ""
+          };
+        }
+
         await addDoc(collection(db, "chats", activeChatId, "messages"), message);
 
         await setDoc(doc(db, "chats", activeChatId), {
@@ -1833,6 +2463,7 @@
         $("messageInput").value = "";
         resizeMessageInput();
         clearAttachment();
+        clearReply();
         playSendSound();
 
         setTyping(false);
@@ -1999,6 +2630,64 @@
     });
 
     $("sendButton").addEventListener("click", sendMessage);
+
+    $("clearReplyButton").addEventListener("click", () => {
+      clearReply();
+      playCloseSound();
+    });
+
+    $("replyMessageButton").addEventListener("click", () => {
+      const message = currentMessages.get(contextMessageId);
+
+      if (message) {
+        setReplyTarget(message);
+      }
+
+      closeMessageMenu();
+    });
+
+    $("deleteMessageButton").addEventListener(
+      "click",
+      deleteSelectedMessage
+    );
+
+    document.querySelectorAll(".reaction-button").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const messageId = contextMessageId;
+        const emoji = button.dataset.reaction;
+
+        closeMessageMenu();
+        await toggleReaction(messageId, emoji);
+      });
+    });
+
+    $("messageMenuOverlay").addEventListener("click", (event) => {
+      if (event.target === $("messageMenuOverlay")) {
+        closeMessageMenu();
+      }
+    });
+
+    $("messages").addEventListener("click", (event) => {
+      const image = event.target.closest(".image-attachment");
+
+      if (!image) return;
+
+      openImageViewer(
+        image.dataset.imageSrc,
+        image.dataset.imageName || "image"
+      );
+    });
+
+    $("closeMediaViewer").addEventListener(
+      "click",
+      closeImageViewer
+    );
+
+    $("mediaViewer").addEventListener("click", (event) => {
+      if (event.target === $("mediaViewer")) {
+        closeImageViewer();
+      }
+    });
 
     $("fileInput").addEventListener("change", async () => {
       const file = $("fileInput").files[0];
