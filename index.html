@@ -778,7 +778,17 @@
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#292929"/><circle cx="50" cy="36" r="17" fill="none" stroke="#ddd" stroke-width="5"/><path d="M20 87c3-22 15-33 30-33s27 11 30 33" fill="none" stroke="#ddd" stroke-width="5" stroke-linecap="round"/></svg>',
         );
       const RE = /^[a-zA-Z1-9_]{1,16}$/,
-        ICE = [{ urls: "stun:stun.l.google.com:19302" }];
+        ICE = [
+          {
+            urls: [
+              "stun:stun.l.google.com:19302",
+              "stun:stun1.l.google.com:19302",
+              "stun:stun2.l.google.com:19302",
+              "stun:stun3.l.google.com:19302",
+              "stun:stun4.l.google.com:19302",
+            ],
+          },
+        ];
       let u = null,
         p = null,
         pa = "",
@@ -790,12 +800,20 @@
         callRef = null,
         pc = null,
         ls = null,
+        pendingRemoteCandidates = [],
+        disconnectTimer = null,
+        connectionTimer = null,
+        iceRestartAttempts = 0,
+        iceRestartBusy = false,
         startAt = null,
         durTimer = null,
         muted = false,
         speaker = false,
         enc = localStorage.getItem("encryptionEnabled") === "true",
         mode = localStorage.getItem("displayMode") || "emoji";
+      const MAX_ICE_RESTART_ATTEMPTS = 3,
+        DISCONNECT_GRACE_PERIOD = 12000,
+        CONNECTION_TIMEOUT = 30000;
       const clean = (v) =>
           v
             .replace(/^@+/, "")
@@ -827,7 +845,7 @@
           : `${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
       }
       function startDur() {
-        stopDur();
+        if (startAt !== null) return;
         startAt = Date.now();
         $("callStatus").textContent = "00:00";
         durTimer = setInterval(
@@ -985,19 +1003,203 @@
         });
         return ls;
       }
+      async function addRemoteCandidate(candidateData) {
+        if (!candidateData) return;
+        const candidate = new RTCIceCandidate(candidateData);
+        if (pc && pc.remoteDescription) {
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (e) {
+            console.warn("ICE candidate add error:", e);
+          }
+          return;
+        }
+        pendingRemoteCandidates.push(candidate);
+      }
+
+      async function flushRemoteCandidates() {
+        if (!pc || !pc.remoteDescription) return;
+        const candidates = pendingRemoteCandidates.splice(0);
+        for (const candidate of candidates) {
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (e) {
+            console.warn("Delayed ICE candidate add error:", e);
+          }
+        }
+      }
+
+      function clearConnectionTimers() {
+        if (disconnectTimer !== null) {
+          clearTimeout(disconnectTimer);
+          disconnectTimer = null;
+        }
+        if (connectionTimer !== null) {
+          clearTimeout(connectionTimer);
+          connectionTimer = null;
+        }
+      }
+
+      async function restartIceConnection() {
+        if (!pc || !callRef || !u) return;
+        if (pc.signalingState === "closed") return;
+        if (iceRestartBusy) return;
+        if (iceRestartAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
+          $("callStatus").textContent = "Прямое соединение недоступно";
+          return;
+        }
+        iceRestartBusy = true;
+        iceRestartAttempts++;
+        $("callStatus").textContent = `Переподключение ${iceRestartAttempts}/${MAX_ICE_RESTART_ATTEMPTS}…`;
+        try {
+          if (typeof pc.restartIce === "function") pc.restartIce();
+          const restartOffer = await pc.createOffer({ iceRestart: true });
+          await pc.setLocalDescription(restartOffer);
+          await updateDoc(callRef, {
+            restartOffer: { type: restartOffer.type, sdp: restartOffer.sdp },
+            restartBy: u.uid,
+            restartVersion: Date.now(),
+            restartAt: serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn("ICE restart error:", e);
+        } finally {
+          setTimeout(() => {
+            iceRestartBusy = false;
+          }, 3000);
+        }
+      }
+
+      async function handleCallDocument(d) {
+        if (!pc || !d || !u) return;
+
+        if (d.restartOffer && d.restartBy !== u.uid) {
+          const version = d.restartVersion || 0;
+          const lastVersion = pc._lastRestartOfferVersion || 0;
+          if (version > lastVersion && pc.signalingState !== "closed") {
+            pc._lastRestartOfferVersion = version;
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(d.restartOffer));
+              await flushRemoteCandidates();
+              const restartAnswer = await pc.createAnswer();
+              await pc.setLocalDescription(restartAnswer);
+              await updateDoc(callRef, {
+                restartAnswer: { type: restartAnswer.type, sdp: restartAnswer.sdp },
+                restartAnswerBy: u.uid,
+                restartAnswerVersion: version,
+                restartAnsweredAt: serverTimestamp(),
+              });
+            } catch (e) {
+              console.warn("Restart offer handle error:", e);
+            }
+          }
+        }
+
+        if (d.restartAnswer && d.restartAnswerBy !== u.uid) {
+          const version = d.restartAnswerVersion || 0;
+          const lastVersion = pc._lastRestartAnswerVersion || 0;
+          if (version > lastVersion && pc.signalingState !== "closed") {
+            pc._lastRestartAnswerVersion = version;
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(d.restartAnswer));
+              await flushRemoteCandidates();
+            } catch (e) {
+              console.warn("Restart answer handle error:", e);
+            }
+          }
+        }
+      }
+
       function newPC() {
-        let x = new RTCPeerConnection({ iceServers: ICE });
-        x.ontrack = (e) => {
-          $("remoteAudio").srcObject = e.streams[0];
-          $("remoteAudio")
-            .play()
-            .catch(() => {});
+        let x = new RTCPeerConnection({
+          iceServers: ICE,
+          iceCandidatePoolSize: 10,
+          bundlePolicy: "max-bundle",
+          rtcpMuxPolicy: "require",
+          iceTransportPolicy: "all",
+        });
+
+        x.ontrack = async (e) => {
+          const audio = $("remoteAudio");
+          const remoteStream = e.streams && e.streams[0];
+          if (remoteStream) {
+            audio.srcObject = remoteStream;
+          } else {
+            const stream = audio.srcObject instanceof MediaStream ? audio.srcObject : new MediaStream();
+            stream.addTrack(e.track);
+            audio.srcObject = stream;
+          }
+          audio.muted = false;
+          audio.volume = speaker ? 1 : 0.85;
+          try {
+            await audio.play();
+          } catch (err) {
+            console.warn("Remote audio play blocked:", err);
+          }
         };
-        x.onconnectionstatechange = () => {
-          if (x.connectionState === "connected") startDur();
-          if (["failed", "disconnected"].includes(x.connectionState))
-            $("callStatus").textContent = "Соединение потеряно";
+
+        x.onicecandidateerror = (e) => {
+          console.warn("ICE candidate error:", e.errorCode, e.errorText);
         };
+
+        x.oniceconnectionstatechange = async () => {
+          const state = x.iceConnectionState;
+          console.log("ICE state:", state);
+          if (state === "connected" || state === "completed") {
+            clearConnectionTimers();
+            iceRestartAttempts = 0;
+            iceRestartBusy = false;
+            startDur();
+            return;
+          }
+          if (state === "checking") {
+            $("callStatus").textContent = "Соединение…";
+            return;
+          }
+          if (state === "disconnected") {
+            $("callStatus").textContent = "Переподключение…";
+            if (disconnectTimer !== null) clearTimeout(disconnectTimer);
+            disconnectTimer = setTimeout(async () => {
+              if (pc && pc.iceConnectionState === "disconnected") await restartIceConnection();
+            }, DISCONNECT_GRACE_PERIOD);
+            return;
+          }
+          if (state === "failed") {
+            await restartIceConnection();
+          }
+        };
+
+        x.onconnectionstatechange = async () => {
+          const state = x.connectionState;
+          console.log("Peer state:", state);
+          if (state === "connected") {
+            clearConnectionTimers();
+            iceRestartAttempts = 0;
+            iceRestartBusy = false;
+            startDur();
+            return;
+          }
+          if (state === "new" || state === "connecting") {
+            $("callStatus").textContent = "Соединение…";
+            return;
+          }
+          if (state === "disconnected") {
+            $("callStatus").textContent = "Переподключение…";
+            return;
+          }
+          if (state === "failed") {
+            await restartIceConnection();
+            return;
+          }
+          if (state === "closed") {
+            clearConnectionTimers();
+          }
+        };
+
+        connectionTimer = setTimeout(async () => {
+          if (pc && pc.connectionState !== "connected") await restartIceConnection();
+        }, CONNECTION_TIMEOUT);
+
         return x;
       }
       function showCall(x, s) {
@@ -1012,6 +1214,9 @@
         try {
           if (callRef) return;
           showCall(t, "Вызов…");
+          pendingRemoteCandidates = [];
+          iceRestartAttempts = 0;
+          iceRestartBusy = false;
           let st = await mic();
           pc = newPC();
           st.getTracks().forEach((q) => pc.addTrack(q, st));
@@ -1021,15 +1226,9 @@
           pc.onicecandidate = (e) =>
             e.candidate && addDoc(cc, e.candidate.toJSON());
           candUn = onSnapshot(dc, (s) =>
-            s
-              .docChanges()
-              .forEach(
-                (c) =>
-                  c.type === "added" &&
-                  pc
-                    ?.addIceCandidate(new RTCIceCandidate(c.doc.data()))
-                    .catch(() => {}),
-              ),
+            s.docChanges().forEach((c) => {
+              if (c.type === "added") addRemoteCandidate(c.doc.data());
+            }),
           );
           let off = await pc.createOffer();
           await pc.setLocalDescription(off);
@@ -1047,10 +1246,12 @@
           callUn = onSnapshot(callRef, async (s) => {
             if (!s.exists()) return;
             let d = s.data();
+            await handleCallDocument(d);
             if (d.answer && !pc.currentRemoteDescription)
               await pc.setRemoteDescription(
                 new RTCSessionDescription(d.answer),
               );
+              await flushRemoteCandidates();
             if (d.status === "rejected") {
               $("callStatus").textContent = "Вызов отклонён";
               setTimeout(cleanup, 700);
@@ -1072,6 +1273,9 @@
             { username: d.callerUsername, avatar: d.callerAvatar },
             "Соединение…",
           );
+          pendingRemoteCandidates = [];
+          iceRestartAttempts = 0;
+          iceRestartBusy = false;
           let st = await mic();
           pc = newPC();
           st.getTracks().forEach((q) => pc.addTrack(q, st));
@@ -1080,17 +1284,12 @@
           pc.onicecandidate = (e) =>
             e.candidate && addDoc(dc, e.candidate.toJSON());
           candUn = onSnapshot(cc, (s) =>
-            s
-              .docChanges()
-              .forEach(
-                (c) =>
-                  c.type === "added" &&
-                  pc
-                    ?.addIceCandidate(new RTCIceCandidate(c.doc.data()))
-                    .catch(() => {}),
-              ),
+            s.docChanges().forEach((c) => {
+              if (c.type === "added") addRemoteCandidate(c.doc.data());
+            }),
           );
           await pc.setRemoteDescription(new RTCSessionDescription(d.offer));
+          await flushRemoteCandidates();
           let an = await pc.createAnswer();
           await pc.setLocalDescription(an);
           await updateDoc(callRef, {
@@ -1098,8 +1297,14 @@
             status: "accepted",
             answeredAt: serverTimestamp(),
           });
-          callUn = onSnapshot(callRef, (s) => {
-            if (!s.exists() || s.data().status === "ended") cleanup();
+          callUn = onSnapshot(callRef, async (s) => {
+            if (!s.exists()) {
+              cleanup();
+              return;
+            }
+            const d = s.data();
+            await handleCallDocument(d);
+            if (d.status === "ended") cleanup();
           });
           inc = null;
         } catch (e) {
@@ -1126,6 +1331,10 @@
       }
       function cleanup() {
         stopDur();
+        clearConnectionTimers();
+        pendingRemoteCandidates = [];
+        iceRestartAttempts = 0;
+        iceRestartBusy = false;
         callUn?.();
         candUn?.();
         callUn = candUn = null;
