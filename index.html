@@ -1,2677 +1,1422 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-
+  <head>
+    <meta charset="utf-8" />
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no"
-    >
-
-    <meta name="theme-color" content="#101010">
-
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+    />
+    <meta name="theme-color" content="#101010" />
     <title>UniversalCaller</title>
-
     <style>
-        :root {
-            --background: #101010;
-            --surface: #191919;
-            --surface-hover: #232323;
-            --surface-soft: #242424;
-            --border: #292929;
-
-            --text-primary: #f2f2f2;
-            --text-secondary: #929292;
-            --text-muted: #777777;
-
-            --online: #9fd2ad;
-            --offline: #5b5b5b;
-            --error: #d98b8b;
-
-            --call-control: #292929;
-            --call-control-active: #ededed;
-            --call-control-active-text: #111111;
-
-            --hangup: #e53935;
-            --hangup-hover: #ef4844;
-        }
-
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        html,
-        body {
-            width: 100%;
-            min-height: 100%;
-            margin: 0;
-            background: var(--background);
-        }
-
-        html {
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-
-        body {
-            min-height: 100vh;
-            min-height: 100dvh;
-
-            overflow-x: hidden;
-
-            color: var(--text-primary);
-
-            font-family:
-                Inter,
-                -apple-system,
-                BlinkMacSystemFont,
-                "SF Pro Display",
-                "SF Pro Text",
-                "Segoe UI",
-                Roboto,
-                Arial,
-                sans-serif;
-        }
-
-        button,
-        input {
-            font: inherit;
-        }
-
-        button {
-            padding: 0;
-            border: none;
-            outline: none;
-            cursor: pointer;
-        }
-
-        img {
-            -webkit-user-drag: none;
-            user-select: none;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
+      :root {
+        --bg: #101010;
+        --s: #191919;
+        --s2: #232323;
+        --b: #303030;
+        --t: #f2f2f2;
+        --m: #8e8e8e;
+        --d: #e33d39;
+        --ok: #9fd2ad;
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--t);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial,
+          sans-serif;
+      }
+      body {
+        min-height: 100dvh;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .app {
+        max-width: 560px;
+        min-height: 100dvh;
+        margin: auto;
+        padding: max(10px, env(safe-area-inset-top))
+          max(12px, env(safe-area-inset-right))
+          calc(24px + env(safe-area-inset-bottom))
+          max(12px, env(safe-area-inset-left));
+      }
+      .top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding-bottom: 14px;
+        background: rgba(16, 16, 16, 0.94);
+        backdrop-filter: blur(18px);
+      }
+      .search {
+        position: relative;
+        flex: 1;
+      }
+      .search svg {
+        position: absolute;
+        left: 14px;
+        top: 13px;
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: #888;
+        stroke-width: 1.8;
+      }
+      .search input {
+        width: 100%;
+        height: 44px;
+        padding: 0 14px 0 40px;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        background: var(--s);
+        color: var(--t);
+        outline: 0;
+      }
+      .search input:focus {
+        border-color: #444;
+      }
+      .icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 42px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #eee;
+      }
+      .icon svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.55;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .me {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 32px;
+        color: var(--m);
+        font-size: 12px;
+      }
+      .me span {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ok);
+      }
+      .mini {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #292929;
+      }
+      .contacts {
+        border-top: 1px solid var(--b);
+      }
+      .contact {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 72px;
+        padding: 9px 4px;
+        border-bottom: 1px solid var(--b);
+      }
+      .avaw {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        flex: 0 0 50px;
+      }
+      .ava {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #292929;
+      }
+      .presence {
+        position: absolute;
+        right: 0;
+        bottom: 1px;
+        width: 11px;
+        height: 11px;
+        border: 2px solid var(--bg);
+        border-radius: 50%;
+        background: #555;
+      }
+      .presence.on {
+        background: var(--ok);
+      }
+      .ci {
+        min-width: 0;
+        flex: 1;
+      }
+      .ci h3 {
+        margin: 0 0 5px;
+        font-size: 15px;
+      }
+      .ci p {
+        margin: 0;
+        color: var(--m);
+        font-size: 13px;
+      }
+      .call {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #ddd;
+      }
+      .call svg {
+        width: 21px;
+        height: 21px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .empty {
+        padding: 48px 16px;
+        text-align: center;
+        color: var(--m);
+        font-size: 14px;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 16px max(16px, env(safe-area-inset-right))
+          calc(16px + env(safe-area-inset-bottom))
+          max(16px, env(safe-area-inset-left));
+        background: rgba(0, 0, 0, 0.68);
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        visibility: hidden;
+        transition: 0.2s;
+      }
+      .overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      .sheet {
+        width: 100%;
+        max-width: 520px;
+        max-height: calc(100dvh - 28px);
+        overflow: auto;
+        padding: 10px 18px 22px;
+        border: 1px solid var(--b);
+        border-radius: 24px;
+        background: #1a1a1a;
+        transform: translateY(24px);
+        transition: 0.22s;
+      }
+      .overlay.show .sheet {
+        transform: none;
+      }
+      .handle {
+        width: 38px;
+        height: 4px;
+        margin: 0 auto 22px;
+        border-radius: 99px;
+        background: #555;
+      }
+      .sheet h2 {
+        margin: 0 0 18px;
+      }
+      .field {
+        width: 100%;
+        height: 48px;
+        margin-bottom: 10px;
+        padding: 0 14px;
+        border: 1px solid #333;
+        border-radius: 14px;
+        background: var(--s2);
+        color: var(--t);
+        outline: 0;
+      }
+      .field:focus {
+        border-color: #555;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        flex: 1;
+        min-height: 48px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 14px;
+        background: #292929;
+        color: var(--t);
+        font-weight: 650;
+      }
+      .btn.primary {
+        background: #eee;
+        color: #151515;
+      }
+      .btn.danger {
+        background: var(--d);
+        color: white;
+      }
+      .hint {
+        min-height: 18px;
+        margin: 4px 0 12px;
+        color: var(--m);
+        font-size: 12px;
+      }
+      .hint.error {
+        color: #e49a9a;
+      }
+      .pa {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        margin: 0 auto 20px;
+      }
+      .pa img {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #252525;
+      }
+      .pick {
+        position: absolute;
+        right: -2px;
+        bottom: -2px;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border: 3px solid #1a1a1a;
+        border-radius: 50%;
+        background: #eee;
+        color: #111;
+      }
+      .pick svg {
+        width: 17px;
+        height: 17px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+      .setting {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 58px;
+        border-bottom: 1px solid var(--b);
+      }
+      .switch {
+        position: relative;
+        width: 44px;
+        height: 26px;
+        border: 0;
+        border-radius: 99px;
+        background: #363636;
+      }
+      .switch:after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #bbb;
+        transition: 0.2s;
+      }
+      .switch.on {
+        background: #eee;
+      }
+      .switch.on:after {
+        left: 21px;
+        background: #181818;
+      }
+      .seg {
+        display: flex;
+        padding: 3px;
+        border-radius: 11px;
+        background: #242424;
+      }
+      .seg button {
+        min-height: 34px;
+        padding: 0 11px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--m);
+        font-size: 12px;
+      }
+      .seg button.on {
+        background: #eee;
+        color: #151515;
+      }
+      .auth {
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background:
+          radial-gradient(
+            circle at 50% 25%,
+            rgba(255, 255, 255, 0.05),
+            transparent 35%
+          ),
+          #101010;
+      }
+      .authcard {
+        width: 100%;
+        max-width: 390px;
+        padding: 26px;
+        border: 1px solid #2e2e2e;
+        border-radius: 24px;
+        background: #191919;
+      }
+      .authcard h1 {
+        margin: 0 0 8px;
+      }
+      .authcard p {
+        margin: 0 0 20px;
+        color: var(--m);
+      }
+      .callscreen {
+        position: fixed;
+        inset: 0;
+        z-index: 220;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        min-height: 100dvh;
+        padding: max(18px, env(safe-area-inset-top))
+          max(20px, env(safe-area-inset-right))
+          calc(30px + env(safe-area-inset-bottom))
+          max(20px, env(safe-area-inset-left));
+        background:
+          radial-gradient(
+            circle at 50% 28%,
+            rgba(255, 255, 255, 0.04),
+            transparent 35%
+          ),
+          #101010;
+        opacity: 0;
+        visibility: hidden;
+        transition: 0.22s;
+      }
+      .callscreen.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      .verify {
+        position: absolute;
+        top: max(18px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 7px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 14px;
+        background: rgba(34, 34, 34, 0.86);
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        white-space: nowrap;
+      }
+      .verify.show {
+        display: flex;
+      }
+      .verify.emoji {
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+      .callmain {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: clamp(88px, 14vh, 145px);
+        text-align: center;
+      }
+      .callmain img {
+        width: clamp(104px, 29vw, 128px);
+        height: clamp(104px, 29vw, 128px);
+        border-radius: 50%;
+        object-fit: cover;
+        background: #252525;
+      }
+      .callmain h2 {
+        margin: 22px 0 9px;
+      }
+      .callmain p {
+        margin: 0;
+        color: var(--m);
+        font-variant-numeric: tabular-nums;
+      }
+      .controls {
+        display: flex;
+        gap: clamp(14px, 4.5vw, 21px);
+        margin-top: auto;
+      }
+      .control {
+        display: grid;
+        place-items: center;
+        width: clamp(58px, 17vw, 66px);
+        height: clamp(58px, 17vw, 66px);
+        border: 0;
+        border-radius: 50%;
+        background: #292929;
+        color: white;
+      }
+      .control svg {
+        width: 27px;
+        height: 27px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .control.on,
+      .control.muted {
+        background: #eee;
+        color: #111;
+      }
+      .control.end {
+        background: var(--d);
+      }
+      .control.end svg {
+        position: relative;
+        top: -2px;
+        width: 30px;
+        height: 30px;
+      }
+      .slash {
+        opacity: 0;
+      }
+      .control.muted .slash {
+        opacity: 1;
+      }
+      .incoming {
+        text-align: center;
+      }
+      .incoming img {
+        width: 94px;
+        height: 94px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #252525;
+      }
+      .incoming h2 {
+        margin: 15px 0 6px;
+      }
+      .incoming p {
+        margin: 0 0 20px;
+        color: var(--m);
+      }
+      audio {
+        display: none;
+      }
+      @media (max-width: 370px) {
         .app {
-            width: 100%;
-            max-width: 560px;
-
-            min-height: 100vh;
-            min-height: 100dvh;
-
-            margin: 0 auto;
-
-            padding:
-                max(10px, env(safe-area-inset-top))
-                max(12px, env(safe-area-inset-right))
-                calc(24px + env(safe-area-inset-bottom))
-                max(12px, env(safe-area-inset-left));
+          padding-left: 8px;
+          padding-right: 8px;
         }
-
-        .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-
-            width: 100%;
-            padding-bottom: 14px;
-
-            background: rgba(16, 16, 16, 0.96);
-
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
+        .icon {
+          width: 36px;
         }
-
-        .search {
-            position: relative;
-            flex: 1;
-            min-width: 0;
+        .seg button {
+          padding: 0 8px;
+          font-size: 11px;
         }
-
-        .search-icon {
-            position: absolute;
-            top: 50%;
-            left: 14px;
-
-            width: 18px;
-            height: 18px;
-
-            color: #8b8b8b;
-
-            transform: translateY(-50%);
-            pointer-events: none;
-        }
-
-        .search-icon circle,
-        .search-icon path {
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .search-input {
-            display: block;
-
-            width: 100%;
-            height: 44px;
-
-            padding: 0 14px 0 41px;
-
-            color: var(--text-primary);
-            background: var(--surface);
-
-            border: 1px solid transparent;
-            border-radius: 14px;
-
-            outline: none;
-
-            font-size: 14px;
-
-            transition:
-                background 0.18s ease,
-                border-color 0.18s ease;
-        }
-
-        .search-input::placeholder {
-            color: var(--text-muted);
-            opacity: 1;
-        }
-
-        .search-input:focus {
-            background: #1c1c1c;
-            border-color: #343434;
-        }
-
-        .top-actions {
-            display: flex;
-            align-items: center;
-            gap: 0;
-
-            flex-shrink: 0;
-        }
-
-        .top-button {
-            display: grid;
-            place-items: center;
-
-            width: 40px;
-            height: 42px;
-
-            color: #eeeeee;
-            background: transparent;
-
-            border-radius: 50%;
-
-            transition:
-                color 0.18s ease,
-                background 0.18s ease,
-                transform 0.18s ease;
-        }
-
-        .top-button:active {
-            transform: scale(0.92);
-        }
-
-        .top-button svg {
-            display: block;
-
-            width: 24px;
-            height: 24px;
-
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.55;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .my-panel {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-
-            min-height: 34px;
-
-            color: var(--text-secondary);
-            font-size: 12px;
-        }
-
-        .my-profile-short {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-
-            min-width: 0;
-        }
-
-        .online-dot {
-            width: 7px;
-            height: 7px;
-
-            flex-shrink: 0;
-
-            background: var(--online);
-            border-radius: 50%;
-        }
-
-        .mini-avatar {
-            width: 24px;
-            height: 24px;
-
-            flex-shrink: 0;
-
-            object-fit: cover;
-
-            background: #292929;
-            border-radius: 50%;
-        }
-
-        .my-username {
-            overflow: hidden;
-
-            font-weight: 600;
-
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .logout-button {
-            color: var(--text-muted);
-            background: transparent;
-
-            font-size: 12px;
-        }
-
-        .contacts {
-            display: flex;
-            flex-direction: column;
-
-            border-top: 1px solid var(--border);
-        }
-
-        .contact {
-            display: flex;
-            align-items: center;
-            gap: 13px;
-
-            min-height: 72px;
-            padding: 9px 4px;
-
-            border-bottom: 1px solid var(--border);
-        }
-
-        .avatar-wrapper {
-            position: relative;
-
-            width: 50px;
-            height: 50px;
-
-            flex-shrink: 0;
-        }
-
-        .avatar {
-            display: block;
-
-            width: 50px;
-            height: 50px;
-
-            object-fit: cover;
-
-            background: #292929;
-            border-radius: 50%;
-        }
-
-        .presence-dot {
-            position: absolute;
-            right: 0;
-            bottom: 1px;
-
-            width: 11px;
-            height: 11px;
-
-            background: var(--offline);
-
-            border: 2px solid var(--background);
-            border-radius: 50%;
-        }
-
-        .presence-dot.online {
-            background: var(--online);
-        }
-
-        .contact-info {
-            min-width: 0;
-            flex: 1;
-        }
-
-        .contact-name {
-            margin: 0 0 5px;
-
-            overflow: hidden;
-
-            color: var(--text-primary);
-
-            font-size: 15px;
-            font-weight: 650;
-            line-height: 1.15;
-
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .contact-status {
-            margin: 0;
-
-            overflow: hidden;
-
-            color: var(--text-secondary);
-
-            font-size: 13px;
-            line-height: 1.2;
-
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .call-button {
-            display: grid;
-            place-items: center;
-
-            width: 42px;
-            height: 42px;
-
-            flex-shrink: 0;
-
-            color: #d7d7d7;
-            background: transparent;
-
-            border-radius: 50%;
-        }
-
-        .call-button:active {
-            background: var(--surface-hover);
-            transform: scale(0.92);
-        }
-
-        .call-button svg {
-            width: 21px;
-            height: 21px;
-
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .empty {
-            min-height: 320px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-
-            padding: 40px 20px;
-
-            color: var(--text-secondary);
-            text-align: center;
-        }
-
-        .empty-title {
-            margin: 0 0 7px;
-
-            color: var(--text-primary);
-
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .empty-text {
-            margin: 0;
-
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 100;
-
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-
-            padding:
-                16px
-                max(16px, env(safe-area-inset-right))
-                calc(16px + env(safe-area-inset-bottom))
-                max(16px, env(safe-area-inset-left));
-
-            visibility: hidden;
-            opacity: 0;
-
-            background: rgba(0, 0, 0, 0.66);
-
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-
-            transition:
-                opacity 0.2s ease,
-                visibility 0.2s ease;
-        }
-
-        .modal-overlay.visible {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .modal {
-            width: 100%;
-            max-width: 508px;
-
-            max-height: calc(100dvh - 32px);
-            overflow-y: auto;
-            overscroll-behavior: contain;
-
-            padding: 10px 18px 22px;
-
-            background: #1a1a1a;
-
-            border: 1px solid #303030;
-            border-radius: 24px;
-
-            transform: translateY(24px);
-
-            transition: transform 0.22s ease;
-        }
-
-        .modal-overlay.visible .modal {
-            transform: translateY(0);
-        }
-
-        .modal-handle {
-            width: 38px;
-            height: 4px;
-
-            margin: 0 auto 22px;
-
-            background: #555555;
-            border-radius: 999px;
-        }
-
-        .modal-title {
-            margin: 0 0 18px;
-
-            font-size: 20px;
-            font-weight: 650;
-        }
-
-        .modal-profile {
-            display: flex;
-            align-items: center;
-            flex-direction: column;
-
-            padding: 4px 0 20px;
-
-            text-align: center;
-        }
-
-        .field {
-            width: 100%;
-            height: 48px;
-
-            padding: 0 14px;
-            margin-bottom: 10px;
-
-            color: var(--text-primary);
-            background: #222222;
-
-            border: 1px solid #333333;
-            border-radius: 14px;
-
-            outline: none;
-
-            font-size: 15px;
-        }
-
-        .field:focus {
-            background: #242424;
-            border-color: #555555;
-        }
-
-        .hint {
-            min-height: 18px;
-
-            margin: 4px 0 12px;
-
-            color: var(--text-secondary);
-
-            font-size: 12px;
-            line-height: 1.4;
-        }
-
-        .hint.error {
-            color: var(--error);
-        }
-
-        .button-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .modal-button {
-            min-height: 50px;
-
-            padding: 0 16px;
-
-            color: var(--text-primary);
-            background: #242424;
-
-            border-radius: 14px;
-
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .modal-button:active {
-            transform: scale(0.97);
-        }
-
-        .modal-button.primary {
-            color: #151515;
-            background: #ededed;
-        }
-
-        .modal-button.danger {
-            color: #ffffff;
-            background: var(--hangup);
-        }
-
-        .auth-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 300;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            padding: 22px;
-
-            background:
-                radial-gradient(
-                    circle at 50% 25%,
-                    rgba(255, 255, 255, 0.05),
-                    transparent 35%
-                ),
-                #101010;
-        }
-
-        .auth-card {
-            width: 100%;
-            max-width: 390px;
-
-            padding: 26px;
-
-            background: #191919;
-
-            border: 1px solid #2e2e2e;
-            border-radius: 24px;
-        }
-
-        .auth-title {
-            margin: 0 0 8px;
-
-            font-size: 25px;
-            font-weight: 700;
-        }
-
-        .auth-subtitle {
-            margin: 0 0 20px;
-
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        .profile-avatar-editor {
-            position: relative;
-
-            width: 96px;
-            height: 96px;
-
-            margin: 0 auto 20px;
-        }
-
-        .profile-avatar {
-            width: 96px;
-            height: 96px;
-
-            object-fit: cover;
-
-            background: #252525;
-            border-radius: 50%;
-        }
-
-        .avatar-change-button {
-            position: absolute;
-            right: -2px;
-            bottom: -2px;
-
-            display: grid;
-            place-items: center;
-
-            width: 34px;
-            height: 34px;
-
-            color: #111111;
-            background: #ededed;
-
-            border: 3px solid #1a1a1a;
-            border-radius: 50%;
-
-            cursor: pointer;
-        }
-
-        .avatar-change-button svg {
-            width: 17px;
-            height: 17px;
-
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .avatar-file-input {
-            display: none;
-        }
-
-        .setting-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-
-            min-height: 58px;
-
-            border-bottom: 1px solid var(--border);
-        }
-
-        .switch {
-            position: relative;
-
-            width: 44px;
-            height: 26px;
-
-            flex-shrink: 0;
-
-            background: #363636;
-            border-radius: 999px;
-        }
-
-        .switch::after {
-            content: "";
-
-            position: absolute;
-            top: 3px;
-            left: 3px;
-
-            width: 20px;
-            height: 20px;
-
-            background: #bfbfbf;
-            border-radius: 50%;
-
-            transition:
-                left 0.2s ease,
-                background 0.2s ease;
-        }
-
-        .switch.active {
-            background: #e6e6e6;
-        }
-
-        .switch.active::after {
-            left: 21px;
-            background: #181818;
-        }
-
-        .encryption-options {
-            display: none;
-        }
-
-        .encryption-options.visible {
-            display: block;
-        }
-
-        .display-setting {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-
-            min-height: 68px;
-
-            border-bottom: 1px solid var(--border);
-        }
-
-        .display-options {
-            display: flex;
-            align-items: center;
-
-            padding: 3px;
-
-            background: #242424;
-            border-radius: 11px;
-        }
-
-        .display-option {
-            min-height: 34px;
-
-            padding: 0 11px;
-
-            color: var(--text-secondary);
-            background: transparent;
-
-            border-radius: 8px;
-
-            font-size: 12px;
-            white-space: nowrap;
-        }
-
-        .display-option.active {
-            color: #151515;
-            background: #ededed;
-        }
-
-        .incoming-card {
-            text-align: center;
-        }
-
-        .incoming-avatar {
-            width: 94px;
-            height: 94px;
-
-            object-fit: cover;
-
-            background: #252525;
-            border-radius: 50%;
-        }
-
-        .incoming-title {
-            margin: 15px 0 6px;
-
-            font-size: 21px;
-            font-weight: 650;
-        }
-
-        .incoming-username {
-            margin: 0 0 20px;
-
-            color: var(--text-secondary);
-        }
-
-        .call-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 220;
-
-            display: flex;
-            align-items: center;
-            flex-direction: column;
-
-            width: 100%;
-            min-height: 100vh;
-            min-height: 100dvh;
-
-            visibility: hidden;
-            opacity: 0;
-
-            padding:
-                max(18px, env(safe-area-inset-top))
-                max(20px, env(safe-area-inset-right))
-                calc(30px + env(safe-area-inset-bottom))
-                max(20px, env(safe-area-inset-left));
-
-            background:
-                radial-gradient(
-                    circle at 50% 28%,
-                    rgba(255, 255, 255, 0.035),
-                    transparent 34%
-                ),
-                #101010;
-
-            transition:
-                opacity 0.22s ease,
-                visibility 0.22s ease;
-        }
-
-        .call-screen.visible {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .call-verification {
-            position: absolute;
-            top: max(18px, env(safe-area-inset-top));
-            left: 50%;
-
-            display: none;
-            align-items: center;
-            justify-content: center;
-
-            min-height: 42px;
-            max-width: calc(100% - 40px);
-
-            padding: 7px 14px;
-
-            color: #eeeeee;
-            background: rgba(34, 34, 34, 0.82);
-
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 14px;
-
-            transform: translateX(-50%);
-
-            user-select: none;
-            white-space: nowrap;
-        }
-
-        .call-verification.visible {
-            display: flex;
-        }
-
-        .call-verification.emoji-mode {
-            gap: 5px;
-
-            font-size: 22px;
-            line-height: 1;
-        }
-
-        .call-verification.code-mode {
-            font-size: 17px;
-            font-weight: 650;
-            letter-spacing: 0.22em;
-
-            padding-left: 18px;
-        }
-
-        .call-contact {
-            display: flex;
-            align-items: center;
-            flex-direction: column;
-
-            width: 100%;
-            max-width: 420px;
-
-            margin-top: clamp(88px, 14vh, 145px);
-
-            text-align: center;
-        }
-
-        .call-avatar {
-            width: clamp(104px, 29vw, 128px);
-            height: clamp(104px, 29vw, 128px);
-
-            margin-bottom: 24px;
-
-            object-fit: cover;
-
-            background: #252525;
-            border-radius: 50%;
-        }
-
-        .call-name {
-            max-width: 100%;
-
-            margin: 0 0 10px;
-
-            overflow: hidden;
-
-            font-size: clamp(23px, 6.5vw, 28px);
-            font-weight: 600;
-
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .call-status {
-            min-height: 20px;
-            margin: 0;
-
-            color: var(--text-secondary);
-
-            font-size: 15px;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
-        }
-
-        .call-controls {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: clamp(14px, 4.5vw, 21px);
-
-            width: 100%;
-            max-width: 430px;
-
-            margin-top: auto;
-        }
-
-        .control-button {
-            position: relative;
-
-            display: grid;
-            place-items: center;
-
-            width: clamp(58px, 17vw, 66px);
-            height: clamp(58px, 17vw, 66px);
-
-            flex-shrink: 0;
-
-            color: var(--text-primary);
-            background: var(--call-control);
-
-            border-radius: 50%;
-        }
-
-        .control-button svg {
-            width: 27px;
-            height: 27px;
-
-            overflow: visible;
-
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .microphone-button .microphone-slash {
-            opacity: 0;
-            stroke-width: 2.3;
-        }
-
-        .microphone-button.muted {
-            color: #111111;
-            background: #ededed;
-        }
-
-        .microphone-button.muted .microphone-slash {
-            opacity: 1;
-        }
-
-        .speaker-button.active {
-            color: #111111;
-            background: #ededed;
-        }
-
-        .end-call-button {
-            color: #ffffff;
-            background: var(--hangup);
-        }
-
-        .end-call-button svg {
-            position: relative;
-            top: -1px;
-
-            width: 30px;
-            height: 30px;
-
-            stroke-width: 2.05;
-        }
-
-        audio {
-            display: none;
-        }
-
-        @media (max-width: 370px) {
-            .app {
-                padding-right: 8px;
-                padding-left: 8px;
-            }
-
-            .top-button {
-                width: 36px;
-            }
-
-            .display-option {
-                padding: 0 8px;
-                font-size: 11px;
-            }
-
-            .call-controls {
-                gap: 12px;
-            }
-        }
-
-        @media (min-width: 561px) {
-            body {
-                display: flex;
-                justify-content: center;
-            }
-
-            .app {
-                border-right: 1px solid var(--border);
-                border-left: 1px solid var(--border);
-            }
-        }
+      }
     </style>
-</head>
-
-<body>
-    <div id="authScreen" class="auth-screen">
-        <div class="auth-card">
-            <h1 class="auth-title">UniversalCaller</h1>
-            <p class="auth-subtitle">Войди или создай аккаунт.</p>
-
-            <input
-                id="authEmail"
-                class="field"
-                type="email"
-                placeholder="Email"
-                autocomplete="email"
-            >
-
-            <input
-                id="authPassword"
-                class="field"
-                type="password"
-                placeholder="Пароль — минимум 6 символов"
-                autocomplete="current-password"
-            >
-
-            <input
-                id="authUsername"
-                class="field"
-                type="text"
-                placeholder="@username при регистрации"
-                maxlength="16"
-                autocomplete="off"
-                autocapitalize="none"
-                spellcheck="false"
-            >
-
-            <div id="authHint" class="hint"></div>
-
-            <div class="button-row">
-                <button id="loginButton" class="modal-button" type="button">
-                    Войти
-                </button>
-
-                <button id="registerButton" class="modal-button primary" type="button">
-                    Регистрация
-                </button>
-            </div>
+  </head>
+  <body>
+    <div id="authScreen" class="auth">
+      <div class="authcard">
+        <h1>UniversalCaller</h1>
+        <p>Войди или создай аккаунт.</p>
+        <input
+          id="authEmail"
+          class="field"
+          type="email"
+          placeholder="Email"
+        /><input
+          id="authPassword"
+          class="field"
+          type="password"
+          placeholder="Пароль — минимум 6 символов"
+        /><input
+          id="authUsername"
+          class="field"
+          placeholder="@username при регистрации"
+          maxlength="16"
+        />
+        <div id="authHint" class="hint"></div>
+        <div class="row">
+          <button id="loginBtn" class="btn">Войти</button
+          ><button id="registerBtn" class="btn primary">Регистрация</button>
         </div>
+      </div>
     </div>
-
     <main class="app">
-        <header class="topbar">
-            <div class="search">
-                <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="10.5" cy="10.5" r="5.8"></circle>
-                    <path d="M15 15 20 20"></path>
-                </svg>
-
-                <input
-                    id="searchInput"
-                    class="search-input"
-                    type="search"
-                    placeholder="Поиск по @username"
-                    autocomplete="off"
-                    aria-label="Поиск по username"
-                >
-            </div>
-
-            <div class="top-actions">
-                <button
-                    id="settingsButton"
-                    class="top-button"
-                    type="button"
-                    aria-label="Настройки"
-                >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                            d="
-                                M9.55 2.7
-                                H14.45
-                                L15 4.85
-                                C15.48 5.02 15.94 5.27 16.35 5.55
-                                L18.5 4.95
-                                L20.95 9.05
-                                L19.35 10.6
-                                C19.4 11.06 19.4 11.54 19.35 12
-                                C19.4 12.46 19.4 12.94 19.35 13.4
-                                L20.95 14.95
-                                L18.5 19.05
-                                L16.35 18.45
-                                C15.94 18.73 15.48 18.98 15 19.15
-                                L14.45 21.3
-                                H9.55
-                                L9 19.15
-                                C8.52 18.98 8.06 18.73 7.65 18.45
-                                L5.5 19.05
-                                L3.05 14.95
-                                L4.65 13.4
-                                C4.6 12.94 4.6 12.46 4.65 12
-                                C4.6 11.54 4.6 11.06 4.65 10.6
-                                L3.05 9.05
-                                L5.5 4.95
-                                L7.65 5.55
-                                C8.06 5.27 8.52 5.02 9 4.85
-                                Z
-                            "
-                        ></path>
-                        <circle cx="12" cy="12" r="3.1"></circle>
-                    </svg>
-                </button>
-
-                <button
-                    id="profileButton"
-                    class="top-button"
-                    type="button"
-                    aria-label="Профиль"
-                >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="7.5" r="3.4"></circle>
-                        <path d="M5.5 20c.55-4.1 3-6.2 6.5-6.2s5.95 2.1 6.5 6.2"></path>
-                    </svg>
-                </button>
-            </div>
-        </header>
-
-        <div class="my-panel">
-            <div class="my-profile-short">
-                <span class="online-dot"></span>
-                <img id="miniAvatar" class="mini-avatar" src="" alt="">
-                <span id="myUsername" class="my-username">Подключение...</span>
-            </div>
-
-            <button id="logoutButton" class="logout-button" type="button">
-                Выйти
-            </button>
+      <header class="top">
+        <div class="search">
+          <svg viewBox="0 0 24 24">
+            <circle cx="10.5" cy="10.5" r="5.8"></circle>
+            <path d="M15 15 20 20"></path></svg
+          ><input
+            id="searchInput"
+            type="search"
+            placeholder="Поиск по @username"
+          />
         </div>
-
-        <section>
-            <div id="contactsList" class="contacts"></div>
-
-            <div id="emptyState" class="empty">
-                <h2 class="empty-title">Поиск пользователей</h2>
-                <p class="empty-text">Введите точный юзернейм, например @friend</p>
-            </div>
-        </section>
+        <button id="settingsBtn" class="icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M9.55 2.7h4.9L15 4.85c.48.17.94.42 1.35.7l2.15-.6 2.45 4.1-1.6 1.55c.05.46.05.94 0 1.4.05.46.05.94 0 1.4l1.6 1.55-2.45 4.1-2.15-.6c-.41.28-.87.53-1.35.7l-.55 2.15h-4.9L9 19.15c-.48-.17-.94-.42-1.35-.7l-2.15.6-2.45-4.1 1.6-1.55c-.05-.46-.05-.94 0-1.4-.05-.46-.05-.94 0-1.4L3.05 9.05l2.45-4.1 2.15.6c.41-.28.87-.53 1.35-.7z"
+            ></path>
+            <circle cx="12" cy="12" r="3.1"></circle>
+          </svg></button
+        ><button id="profileBtn" class="icon">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="7.5" r="3.4"></circle>
+            <path d="M5.5 20c.55-4.1 3-6.2 6.5-6.2s5.95 2.1 6.5 6.2"></path>
+          </svg>
+        </button>
+      </header>
+      <div class="me">
+        <span
+          ><i class="dot"></i><img id="miniAvatar" class="mini" /><b
+            id="myUsername"
+            >Подключение…</b
+          ></span
+        ><button
+          id="logoutBtn"
+          style="border: 0; background: transparent; color: #888"
+        >
+          Выйти
+        </button>
+      </div>
+      <section id="contactsList" class="contacts"></section>
+      <div id="emptyState" class="empty">
+        Введите точный юзернейм, например <b>@maslovsky</b>
+      </div>
     </main>
-
-    <div id="profileModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-handle"></div>
-
-            <div class="modal-profile">
-                <div class="profile-avatar-editor">
-                    <img
-                        id="profileAvatar"
-                        class="profile-avatar"
-                        src=""
-                        alt="Аватар профиля"
-                    >
-
-                    <label
-                        class="avatar-change-button"
-                        for="avatarFileInput"
-                        aria-label="Изменить аватар"
-                    >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 7.5h3l1.4-2h7.2l1.4 2h3v11H4Z"></path>
-                            <circle cx="12" cy="13" r="3.2"></circle>
-                        </svg>
-                    </label>
-
-                    <input
-                        id="avatarFileInput"
-                        class="avatar-file-input"
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                    >
-                </div>
-
-                <input
-                    id="profileUsernameInput"
-                    class="field"
-                    type="text"
-                    maxlength="16"
-                    placeholder="@username"
-                    autocomplete="off"
-                    autocapitalize="none"
-                    spellcheck="false"
-                >
-
-                <div id="profileHint" class="hint"></div>
-
-                <div class="button-row">
-                    <button id="closeProfileButton" class="modal-button" type="button">
-                        Закрыть
-                    </button>
-
-                    <button id="saveProfileButton" class="modal-button primary" type="button">
-                        Сохранить
-                    </button>
-                </div>
-            </div>
+    <div id="profileOverlay" class="overlay">
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="pa">
+          <img id="profileAvatar" /><label class="pick" for="avatarInput"
+            ><svg viewBox="0 0 24 24">
+              <path d="M4 7.5h3l1.4-2h7.2l1.4 2h3v11H4Z"></path>
+              <circle cx="12" cy="13" r="3.2"></circle></svg></label
+          ><input
+            id="avatarInput"
+            class="hidden"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+          />
         </div>
+        <input
+          id="profileUsername"
+          class="field"
+          maxlength="16"
+          placeholder="@username"
+        />
+        <div id="profileHint" class="hint"></div>
+        <div class="row">
+          <button id="profileClose" class="btn">Закрыть</button
+          ><button id="profileSave" class="btn primary">Сохранить</button>
+        </div>
+      </div>
     </div>
-
-    <div id="settingsModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-handle"></div>
-
-            <h2 class="modal-title">Настройки</h2>
-
-            <div class="setting-row">
-                <span>Шифрование</span>
-
-                <button
-                    id="encryptionSwitch"
-                    class="switch"
-                    type="button"
-                    role="switch"
-                    aria-checked="false"
-                ></button>
-            </div>
-
-            <div id="encryptionOptions" class="encryption-options">
-                <div class="display-setting">
-                    <span>Отображение</span>
-
-                    <div class="display-options">
-                        <button
-                            class="display-option active"
-                            type="button"
-                            data-display-mode="emoji"
-                        >
-                            Смайлики
-                        </button>
-
-                        <button
-                            class="display-option"
-                            type="button"
-                            data-display-mode="code"
-                        >
-                            Цифровой код
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <button
-                id="closeSettingsButton"
-                class="modal-button primary"
-                type="button"
-                style="width: 100%; margin-top: 22px;"
-            >
-                Готово
-            </button>
+    <div id="settingsOverlay" class="overlay">
+      <div class="sheet">
+        <div class="handle"></div>
+        <h2>Настройки</h2>
+        <div class="setting">
+          <span>Шифрование</span
+          ><button id="encryptionSwitch" class="switch"></button>
         </div>
+        <div id="displaySettings" class="setting hidden">
+          <span>Отображение</span>
+          <div class="seg">
+            <button class="mode on" data-mode="emoji">Смайлики</button
+            ><button class="mode" data-mode="code">Цифровой код</button>
+          </div>
+        </div>
+        <button
+          id="settingsClose"
+          class="btn primary"
+          style="width: 100%; margin-top: 20px"
+        >
+          Готово
+        </button>
+      </div>
     </div>
-
-    <div id="incomingModal" class="modal-overlay">
-        <div class="modal incoming-card">
-            <div class="modal-handle"></div>
-
-            <img id="incomingAvatar" class="incoming-avatar" src="" alt="">
-
-            <h2 class="incoming-title">Входящий звонок</h2>
-            <p id="incomingUsername" class="incoming-username"></p>
-
-            <div class="button-row">
-                <button id="rejectCallButton" class="modal-button danger" type="button">
-                    Отклонить
-                </button>
-
-                <button id="answerCallButton" class="modal-button primary" type="button">
-                    Принять
-                </button>
-            </div>
+    <div id="incomingOverlay" class="overlay">
+      <div class="sheet incoming">
+        <div class="handle"></div>
+        <img id="incomingAvatar" />
+        <h2>Входящий звонок</h2>
+        <p id="incomingUsername"></p>
+        <div class="row">
+          <button id="rejectBtn" class="btn danger">Отклонить</button
+          ><button id="answerBtn" class="btn primary">Принять</button>
         </div>
+      </div>
     </div>
-
-    <div id="callScreen" class="call-screen">
-        <div
-            id="callVerification"
-            class="call-verification"
-            aria-label="Код шифрования"
-        ></div>
-
-        <div class="call-contact">
-            <img id="callAvatar" class="call-avatar" src="" alt="">
-
-            <h2 id="callName" class="call-name"></h2>
-
-            <p id="callStatus" class="call-status">Вызов...</p>
-        </div>
-
-        <div class="call-controls">
-            <button
-                id="microphoneButton"
-                class="control-button microphone-button"
-                type="button"
-                aria-label="Выключить микрофон"
-                aria-pressed="false"
-            >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <g class="microphone-body">
-                        <rect x="9" y="3" width="6" height="11" rx="3"></rect>
-                        <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"></path>
-                        <path d="M12 18v3"></path>
-                        <path d="M9 21h6"></path>
-                    </g>
-
-                    <path
-                        class="microphone-slash"
-                        d="M4.5 4.5 19.5 19.5"
-                    ></path>
-                </svg>
-            </button>
-
-            <button
-                id="speakerButton"
-                class="control-button speaker-button"
-                type="button"
-                aria-label="Включить громкую связь"
-                aria-pressed="false"
-            >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M5 10v4h4l5 4V6l-5 4H5Z"></path>
-                    <path d="M17 9a4 4 0 0 1 0 6"></path>
-                    <path d="M19 6.5a8 8 0 0 1 0 11"></path>
-                </svg>
-            </button>
-
-            <button
-                id="endCallButton"
-                class="control-button end-call-button"
-                type="button"
-                aria-label="Завершить звонок"
-            >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                        d="
-                            M4.65 14.7
-                            C8.95 11.25 15.05 11.25 19.35 14.7
-                            C19.8 15.05 19.9 15.7 19.55 16.15
-                            L18.1 18
-                            C17.75 18.45 17.1 18.55 16.65 18.2
-                            L14.55 16.55
-                            C12.9 15.25 11.1 15.25 9.45 16.55
-                            L7.35 18.2
-                            C6.9 18.55 6.25 18.45 5.9 18
-                            L4.45 16.15
-                            C4.1 15.7 4.2 15.05 4.65 14.7
-                            Z
-                        "
-                    ></path>
-                </svg>
-            </button>
-        </div>
+    <div id="callScreen" class="callscreen">
+      <div id="verification" class="verify"></div>
+      <div class="callmain">
+        <img id="callAvatar" />
+        <h2 id="callName"></h2>
+        <p id="callStatus">Вызов…</p>
+      </div>
+      <div class="controls">
+        <button id="micBtn" class="control">
+          <svg viewBox="0 0 24 24">
+            <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"></path>
+            <path d="M12 18v3"></path>
+            <path d="M9 21h6"></path>
+            <path class="slash" d="M4.5 4.5 19.5 19.5"></path>
+          </svg></button
+        ><button id="speakerBtn" class="control">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 10v4h4l5 4V6l-5 4H5Z"></path>
+            <path d="M17 9a4 4 0 0 1 0 6"></path>
+            <path d="M19 6.5a8 8 0 0 1 0 11"></path>
+          </svg></button
+        ><button id="hangupBtn" class="control end">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M4.65 14.7c4.3-3.45 10.4-3.45 14.7 0 .45.35.55 1 .2 1.45L18.1 18c-.35.45-1 .55-1.45.2l-2.1-1.65c-1.65-1.3-3.45-1.3-5.1 0l-2.1 1.65c-.45.35-1.1.25-1.45-.2l-1.45-1.85c-.35-.45-.25-1.1.2-1.45Z"
+            ></path>
+          </svg>
+        </button>
+      </div>
     </div>
-
     <audio id="remoteAudio" autoplay playsinline></audio>
-
     <script type="module">
-        const firebaseConfig = {
-            apiKey: "AIzaSyCtHhJRd1NaQKqyfiAJm2GJI5NI2h7W3AI",
-            authDomain: "universalcaller-a398c.firebaseapp.com",
-            projectId: "universalcaller-a398c",
-            storageBucket: "universalcaller-a398c.firebasestorage.app",
-            messagingSenderId: "734023782982",
-            appId: "1:734023782982:web:0bb0f4b526540387d6ff047"
-        };
-
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-
-        import {
-            getAuth,
-            onAuthStateChanged,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            signOut
-        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-
-        import {
-            getFirestore,
-            doc,
-            getDoc,
-            setDoc,
-            updateDoc,
-            collection,
-            query,
-            where,
-            limit,
-            onSnapshot,
-            addDoc,
-            serverTimestamp,
-            runTransaction
-        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
-        const firebaseApp = initializeApp(firebaseConfig);
-        const auth = getAuth(firebaseApp);
-        const db = getFirestore(firebaseApp);
-
-        const $ = (id) => document.getElementById(id);
-
-        const DEFAULT_AVATAR =
-            "data:image/svg+xml;charset=UTF-8," +
-            encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                    <rect width="100" height="100" fill="#292929"/>
-                    <circle
-                        cx="50"
-                        cy="36"
-                        r="17"
-                        fill="none"
-                        stroke="#dddddd"
-                        stroke-width="5"
-                    />
-                    <path
-                        d="M20 87c3-22 15-33 30-33s27 11 30 33"
-                        fill="none"
-                        stroke="#dddddd"
-                        stroke-width="5"
-                        stroke-linecap="round"
-                    />
-                </svg>
-            `);
-
-        const USERNAME_PATTERN = /^[a-zA-Z1-9_]{1,16}$/;
-
-        const ICE_SERVERS = [
-            {
-                urls: "stun:stun.l.google.com:19302"
-            }
-        ];
-
-        const ENCRYPTION_EMOJIS = [
-            "🐱", "🐈", "😺", "😸", "😼",
-            "🐯", "🦁", "🐼", "🐨", "🦊",
-            "🐸", "🐵", "🐧", "🦄", "🐙",
-            "🍀", "🌙", "⭐", "☀️", "🌈",
-            "🍓", "🍒", "🍋", "🥝", "🍉",
-            "🚀", "🎧", "🎮", "⚡", "🔥",
-            "💎", "🫧", "🌊", "❄️", "🪐"
-        ];
-
-        const CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-
-        let currentUser = null;
-        let myProfile = null;
-        let pendingAvatar = "";
-        let registrationInProgress = false;
-
-        let presenceTimer = null;
-        let incomingUnsubscribe = null;
-        let callUnsubscribe = null;
-        let candidateUnsubscribe = null;
-
-        let currentIncomingCall = null;
-        let currentCallRef = null;
-
-        let peerConnection = null;
-        let localStream = null;
-
-        let callStartedAt = null;
-        let callDurationTimer = null;
-
-        let microphoneMuted = false;
-        let speakerEnabled = false;
-
-        let encryptionEnabled =
-            localStorage.getItem("encryptionEnabled") === "true";
-
-        let displayMode =
-            localStorage.getItem("displayMode") || "emoji";
-
-        function cleanUsername(value) {
-            return value
-                .replace(/^@+/, "")
-                .replace(/[^a-zA-Z1-9_]/g, "")
-                .slice(0, 16);
-        }
-
-        function showHint(element, text, isError = false) {
-            element.textContent = text;
-            element.classList.toggle("error", isError);
-        }
-
-        function openModal(modal) {
-            modal.classList.add("visible");
-            document.body.style.overflow = "hidden";
-        }
-
-        function closeModal(modal) {
-            modal.classList.remove("visible");
-
-            if (
-                !document.querySelector(".modal-overlay.visible") &&
-                !$("callScreen").classList.contains("visible")
-            ) {
-                document.body.style.overflow = "";
-            }
-        }
-
-        function isUserOnline(profile) {
-            const lastSeenMilliseconds =
-                profile?.lastSeen?.toMillis?.() || 0;
-
-            return Date.now() - lastSeenMilliseconds < 90000;
-        }
-
-        function formatCallDuration(totalSeconds) {
-            const hours = Math.floor(totalSeconds / 3600);
-
-            const minutes =
-                Math.floor((totalSeconds % 3600) / 60);
-
-            const seconds =
-                totalSeconds % 60;
-
-            const formattedMinutes =
-                String(minutes).padStart(2, "0");
-
-            const formattedSeconds =
-                String(seconds).padStart(2, "0");
-
-            if (hours > 0) {
-                return (
-                    String(hours).padStart(2, "0") +
-                    ":" +
-                    formattedMinutes +
-                    ":" +
-                    formattedSeconds
-                );
-            }
-
-            return formattedMinutes + ":" + formattedSeconds;
-        }
-
-        function updateCallDuration() {
-            if (callStartedAt === null) {
-                return;
-            }
-
-            const elapsedSeconds =
-                Math.floor((Date.now() - callStartedAt) / 1000);
-
-            $("callStatus").textContent =
-                formatCallDuration(elapsedSeconds);
-        }
-
-        function startCallDuration() {
-            stopCallDuration();
-
-            callStartedAt = Date.now();
-
-            updateCallDuration();
-
-            callDurationTimer =
-                window.setInterval(updateCallDuration, 1000);
-        }
-
-        function stopCallDuration() {
-            if (callDurationTimer !== null) {
-                window.clearInterval(callDurationTimer);
-                callDurationTimer = null;
-            }
-
-            callStartedAt = null;
-        }
-
-        function updateVerification() {
-            const verification = $("callVerification");
-
-            verification.innerHTML = "";
-
-            verification.classList.remove(
-                "visible",
-                "emoji-mode",
-                "code-mode"
-            );
-
-            if (!encryptionEnabled) {
-                return;
-            }
-
-            verification.classList.add("visible");
-
-            if (displayMode === "code") {
-                let code = "";
-
-                for (let index = 0; index < 5; index++) {
-                    code += CODE_CHARACTERS.charAt(
-                        Math.floor(Math.random() * CODE_CHARACTERS.length)
-                    );
-                }
-
-                verification.classList.add("code-mode");
-                verification.textContent = code;
-
-                return;
-            }
-
-            verification.classList.add("emoji-mode");
-
-            for (let index = 0; index < 5; index++) {
-                const item = document.createElement("span");
-
-                item.textContent =
-                    ENCRYPTION_EMOJIS[
-                        Math.floor(Math.random() * ENCRYPTION_EMOJIS.length)
-                    ];
-
-                verification.appendChild(item);
-            }
-        }
-
-        function updateSettingsUi() {
-            $("encryptionSwitch").classList.toggle(
-                "active",
-                encryptionEnabled
-            );
-
-            $("encryptionSwitch").setAttribute(
-                "aria-checked",
-                String(encryptionEnabled)
-            );
-
-            $("encryptionOptions").classList.toggle(
-                "visible",
-                encryptionEnabled
-            );
-
-            document
-                .querySelectorAll(".display-option")
-                .forEach((button) => {
-                    button.classList.toggle(
-                        "active",
-                        button.dataset.displayMode === displayMode
-                    );
-                });
-        }
-
-        function updateMyUi() {
-            $("myUsername").textContent =
-                myProfile ? "@" + myProfile.username : "Профиль";
-
-            $("miniAvatar").src =
-                myProfile?.avatar || DEFAULT_AVATAR;
-
-            $("profileAvatar").src =
-                myProfile?.avatar || DEFAULT_AVATAR;
-
-            $("profileUsernameInput").value =
-                myProfile ? "@" + myProfile.username : "";
-        }
-
-        async function reserveUsername(uid, username, oldUsername = "") {
-            const lowerUsername = username.toLowerCase();
-
-            await runTransaction(db, async (transaction) => {
-                const newUsernameRef =
-                    doc(db, "usernames", lowerUsername);
-
-                const newUsernameSnapshot =
-                    await transaction.get(newUsernameRef);
-
-                if (
-                    newUsernameSnapshot.exists() &&
-                    newUsernameSnapshot.data().uid !== uid
-                ) {
-                    throw new Error("Этот юзернейм уже занят");
-                }
-
-                transaction.set(newUsernameRef, {
-                    uid: uid,
-                    username: username,
-                    updatedAt: serverTimestamp()
-                });
-
-                if (
-                    oldUsername &&
-                    oldUsername.toLowerCase() !== lowerUsername
-                ) {
-                    const oldUsernameRef =
-                        doc(db, "usernames", oldUsername.toLowerCase());
-
-                    const oldUsernameSnapshot =
-                        await transaction.get(oldUsernameRef);
-
-                    if (
-                        oldUsernameSnapshot.exists() &&
-                        oldUsernameSnapshot.data().uid === uid
-                    ) {
-                        transaction.delete(oldUsernameRef);
-                    }
-                }
-            });
-        }
-
-        async function saveProfile(usernameValue, avatarValue) {
-            const username =
-                cleanUsername(usernameValue);
-
-            if (!USERNAME_PATTERN.test(username)) {
-                throw new Error(
-                    "Юзернейм: английские буквы, цифры 1–9 и _, максимум 16 символов"
-                );
-            }
-
-            await reserveUsername(
-                currentUser.uid,
-                username,
-                myProfile?.username || ""
-            );
-
-            await setDoc(
-                doc(db, "users", currentUser.uid),
-                {
-                    uid: currentUser.uid,
-                    username: username,
-                    usernameLower: username.toLowerCase(),
-                    avatar: avatarValue || "",
-                    lastSeen: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                },
-                {
-                    merge: true
-                }
-            );
-
-            const profileSnapshot =
-                await getDoc(doc(db, "users", currentUser.uid));
-
-            myProfile = profileSnapshot.data();
-
-            updateMyUi();
-        }
-
-        async function sendHeartbeat() {
-            if (!currentUser) {
-                return;
-            }
-
-            await setDoc(
-                doc(db, "users", currentUser.uid),
-                {
-                    lastSeen: serverTimestamp()
-                },
-                {
-                    merge: true
-                }
-            ).catch(() => {});
-        }
-
-        function createPhoneIcon() {
-            return `
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                        d="
-                            M7.4 4.5
-                            9.6 8
-                            a1.5 1.5 0 0 1-.2 1.8
-                            l-1.2 1.2
-                            a15.5 15.5 0 0 0 4.8 4.8
-                            l1.2-1.2
-                            a1.5 1.5 0 0 1 1.8-.2
-                            l3.5 2.2
-                            a1.5 1.5 0 0 1 .7 1.5
-                            v1.4
-                            a1.5 1.5 0 0 1-1.5 1.5
-                            C10 21 3 14 3 5.3
-                            a1.5 1.5 0 0 1 1.5-1.5
-                            h1.4
-                            a1.5 1.5 0 0 1 1.5.7
-                            Z
-                        "
-                    ></path>
-                </svg>
-            `;
-        }
-
-        function renderFoundUser(profile) {
-            const contactsList = $("contactsList");
-            const emptyState = $("emptyState");
-
-            contactsList.innerHTML = "";
-
-            if (!profile) {
-                emptyState.classList.remove("hidden");
-                return;
-            }
-
-            emptyState.classList.add("hidden");
-
-            const item = document.createElement("article");
-
-            item.className = "contact";
-
-            item.innerHTML = `
-                <div class="avatar-wrapper">
-                    <img
-                        class="avatar"
-                        src="${profile.avatar || DEFAULT_AVATAR}"
-                        alt="@${profile.username}"
-                    >
-
-                    <span
-                        class="presence-dot ${
-                            isUserOnline(profile) ? "online" : ""
-                        }"
-                    ></span>
-                </div>
-
-                <div class="contact-info">
-                    <h2 class="contact-name">
-                        @${profile.username}
-                    </h2>
-
-                    <p class="contact-status">
-                        ${isUserOnline(profile) ? "В сети" : "Не в сети"}
-                    </p>
-                </div>
-
-                <button
-                    class="call-button"
-                    type="button"
-                    aria-label="Позвонить @${profile.username}"
-                >
-                    ${createPhoneIcon()}
-                </button>
-            `;
-
-            item
-                .querySelector(".call-button")
-                .addEventListener("click", () => {
-                    startOutgoingCall(profile);
-                });
-
-            contactsList.appendChild(item);
-        }
-
-        async function searchUser() {
-            const username =
-                cleanUsername($("searchInput").value);
-
-            if (!username) {
-                $("emptyState").classList.remove("hidden");
-                $("emptyState").querySelector(".empty-title").textContent =
-                    "Поиск пользователей";
-
-                $("emptyState").querySelector(".empty-text").textContent =
-                    "Введите точный юзернейм, например @friend";
-
-                $("contactsList").innerHTML = "";
-                return;
-            }
-
-            const usernameSnapshot =
-                await getDoc(doc(db, "usernames", username.toLowerCase()));
-
-            if (!usernameSnapshot.exists()) {
-                $("contactsList").innerHTML = "";
-                $("emptyState").classList.remove("hidden");
-                $("emptyState").querySelector(".empty-title").textContent =
-                    "Пользователь не найден";
-
-                $("emptyState").querySelector(".empty-text").textContent =
-                    "Проверьте юзернейм и попробуйте снова";
-
-                return;
-            }
-
-            const uid =
-                usernameSnapshot.data().uid;
-
-            if (uid === currentUser.uid) {
-                $("contactsList").innerHTML = "";
-                $("emptyState").classList.remove("hidden");
-                $("emptyState").querySelector(".empty-title").textContent =
-                    "Это ваш аккаунт";
-
-                $("emptyState").querySelector(".empty-text").textContent =
-                    "Введите юзернейм другого пользователя";
-
-                return;
-            }
-
-            const profileSnapshot =
-                await getDoc(doc(db, "users", uid));
-
-            renderFoundUser(
-                profileSnapshot.exists()
-                    ? profileSnapshot.data()
-                    : null
-            );
-        }
-
-        async function getMicrophoneStream() {
-            if (localStream) {
-                return localStream;
-            }
-
-            localStream =
-                await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    },
-                    video: false
-                });
-
-            return localStream;
-        }
-
-        function createPeerConnection() {
-            const peer =
-                new RTCPeerConnection({
-                    iceServers: ICE_SERVERS
-                });
-
-            peer.ontrack = (event) => {
-                $("remoteAudio").srcObject =
-                    event.streams[0];
-
-                $("remoteAudio")
-                    .play()
-                    .catch(() => {});
-            };
-
-            peer.onconnectionstatechange = () => {
-                if (peer.connectionState === "connected") {
-                    startCallDuration();
-                }
-
-                if (
-                    peer.connectionState === "failed" ||
-                    peer.connectionState === "disconnected"
-                ) {
-                    $("callStatus").textContent =
-                        "Соединение потеряно";
-                }
-            };
-
-            return peer;
-        }
-
-        function showCallScreen(profile, statusText) {
-            $("callAvatar").src =
-                profile.avatar || DEFAULT_AVATAR;
-
-            $("callName").textContent =
-                "@" + profile.username;
-
-            $("callStatus").textContent =
-                statusText;
-
-            updateVerification();
-
-            $("callScreen").classList.add("visible");
-            document.body.style.overflow = "hidden";
-        }
-
-        async function startOutgoingCall(targetProfile) {
-            try {
-                if (currentCallRef) {
-                    return;
-                }
-
-                showCallScreen(targetProfile, "Вызов...");
-
-                const stream =
-                    await getMicrophoneStream();
-
-                peerConnection =
-                    createPeerConnection();
-
-                stream
-                    .getTracks()
-                    .forEach((track) => {
-                        peerConnection.addTrack(track, stream);
-                    });
-
-                currentCallRef =
-                    doc(collection(db, "calls"));
-
-                const callerCandidates =
-                    collection(currentCallRef, "callerCandidates");
-
-                const calleeCandidates =
-                    collection(currentCallRef, "calleeCandidates");
-
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        addDoc(
-                            callerCandidates,
-                            event.candidate.toJSON()
-                        );
-                    }
-                };
-
-                candidateUnsubscribe =
-                    onSnapshot(calleeCandidates, (snapshot) => {
-                        snapshot.docChanges().forEach((change) => {
-                            if (change.type === "added") {
-                                peerConnection
-                                    ?.addIceCandidate(
-                                        new RTCIceCandidate(change.doc.data())
-                                    )
-                                    .catch(() => {});
-                            }
-                        });
-                    });
-
-                const offer =
-                    await peerConnection.createOffer();
-
-                await peerConnection.setLocalDescription(offer);
-
-                await setDoc(currentCallRef, {
-                    callerId: currentUser.uid,
-                    calleeId: targetProfile.uid,
-
-                    callerUsername: myProfile.username,
-                    callerAvatar: myProfile.avatar || "",
-
-                    calleeUsername: targetProfile.username,
-                    calleeAvatar: targetProfile.avatar || "",
-
-                    status: "ringing",
-                    createdAt: serverTimestamp(),
-
-                    offer: {
-                        type: offer.type,
-                        sdp: offer.sdp
-                    }
-                });
-
-                callUnsubscribe =
-                    onSnapshot(currentCallRef, async (snapshot) => {
-                        if (!snapshot.exists()) {
-                            return;
-                        }
-
-                        const callData =
-                            snapshot.data();
-
-                        if (
-                            callData.answer &&
-                            !peerConnection.currentRemoteDescription
-                        ) {
-                            await peerConnection.setRemoteDescription(
-                                new RTCSessionDescription(callData.answer)
-                            );
-
-                            $("callStatus").textContent =
-                                "Соединение...";
-                        }
-
-                        if (callData.status === "rejected") {
-                            $("callStatus").textContent =
-                                "Вызов отклонён";
-
-                            window.setTimeout(cleanupCall, 700);
-                        }
-
-                        if (callData.status === "ended") {
-                            cleanupCall();
-                        }
-                    });
-            } catch (error) {
-                alert("Не удалось начать звонок: " + error.message);
-                cleanupCall();
-            }
-        }
-
-        async function answerIncomingCall() {
-            if (!currentIncomingCall) {
-                return;
-            }
-
-            try {
-                closeModal($("incomingModal"));
-
-                currentCallRef =
-                    doc(db, "calls", currentIncomingCall.id);
-
-                const callData =
-                    currentIncomingCall.data;
-
-                showCallScreen(
-                    {
-                        username: callData.callerUsername,
-                        avatar: callData.callerAvatar
-                    },
-                    "Соединение..."
-                );
-
-                const stream =
-                    await getMicrophoneStream();
-
-                peerConnection =
-                    createPeerConnection();
-
-                stream
-                    .getTracks()
-                    .forEach((track) => {
-                        peerConnection.addTrack(track, stream);
-                    });
-
-                const callerCandidates =
-                    collection(currentCallRef, "callerCandidates");
-
-                const calleeCandidates =
-                    collection(currentCallRef, "calleeCandidates");
-
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        addDoc(
-                            calleeCandidates,
-                            event.candidate.toJSON()
-                        );
-                    }
-                };
-
-                candidateUnsubscribe =
-                    onSnapshot(callerCandidates, (snapshot) => {
-                        snapshot.docChanges().forEach((change) => {
-                            if (change.type === "added") {
-                                peerConnection
-                                    ?.addIceCandidate(
-                                        new RTCIceCandidate(change.doc.data())
-                                    )
-                                    .catch(() => {});
-                            }
-                        });
-                    });
-
-                await peerConnection.setRemoteDescription(
-                    new RTCSessionDescription(callData.offer)
-                );
-
-                const answer =
-                    await peerConnection.createAnswer();
-
-                await peerConnection.setLocalDescription(answer);
-
-                await updateDoc(currentCallRef, {
-                    answer: {
-                        type: answer.type,
-                        sdp: answer.sdp
-                    },
-                    status: "accepted",
-                    answeredAt: serverTimestamp()
-                });
-
-                callUnsubscribe =
-                    onSnapshot(currentCallRef, (snapshot) => {
-                        if (!snapshot.exists()) {
-                            cleanupCall();
-                            return;
-                        }
-
-                        if (snapshot.data().status === "ended") {
-                            cleanupCall();
-                        }
-                    });
-
-                currentIncomingCall = null;
-            } catch (error) {
-                alert("Не удалось принять звонок: " + error.message);
-                cleanupCall();
-            }
-        }
-
-        async function rejectIncomingCall() {
-            if (!currentIncomingCall) {
-                return;
-            }
-
-            await updateDoc(
-                doc(db, "calls", currentIncomingCall.id),
-                {
-                    status: "rejected",
-                    endedAt: serverTimestamp()
-                }
-            ).catch(() => {});
-
-            currentIncomingCall = null;
-
-            closeModal($("incomingModal"));
-        }
-
-        async function endCall() {
-            if (currentCallRef) {
-                await updateDoc(currentCallRef, {
-                    status: "ended",
-                    endedAt: serverTimestamp()
-                }).catch(() => {});
-            }
-
-            cleanupCall();
-        }
-
-        function cleanupCall() {
-            stopCallDuration();
-
-            callUnsubscribe?.();
-            candidateUnsubscribe?.();
-
-            callUnsubscribe = null;
-            candidateUnsubscribe = null;
-
-            peerConnection?.close();
-            peerConnection = null;
-
-            localStream
-                ?.getTracks()
-                .forEach((track) => {
-                    track.stop();
-                });
-
-            localStream = null;
-
-            $("remoteAudio").srcObject = null;
-
-            currentCallRef = null;
-            currentIncomingCall = null;
-
-            $("callScreen").classList.remove("visible");
-            $("incomingModal").classList.remove("visible");
-
-            $("callVerification").classList.remove(
-                "visible",
-                "emoji-mode",
-                "code-mode"
-            );
-
+      const firebaseConfig = {
+        apiKey: "AIzaSyCtHhJRd1NaQKqyfiAJm2GJI5NI2h7W3AI",
+        authDomain: "universalcaller-a398c.firebaseapp.com",
+        projectId: "universalcaller-a398c",
+        storageBucket: "universalcaller-a398c.firebasestorage.app",
+        messagingSenderId: "734023782982",
+        appId: "1:734023782982:web:0bb0f4b526540387d6ff047",
+      };
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+      import {
+        getFirestore,
+        doc,
+        getDoc,
+        setDoc,
+        updateDoc,
+        collection,
+        query,
+        where,
+        limit,
+        onSnapshot,
+        addDoc,
+        serverTimestamp,
+        runTransaction,
+      } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+      const app = initializeApp(firebaseConfig),
+        auth = getAuth(app),
+        db = getFirestore(app),
+        $ = (id) => document.getElementById(id);
+      const D =
+        "data:image/svg+xml;charset=UTF-8," +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#292929"/><circle cx="50" cy="36" r="17" fill="none" stroke="#ddd" stroke-width="5"/><path d="M20 87c3-22 15-33 30-33s27 11 30 33" fill="none" stroke="#ddd" stroke-width="5" stroke-linecap="round"/></svg>',
+        );
+      const RE = /^[a-zA-Z1-9_]{1,16}$/,
+        ICE = [{ urls: "stun:stun.l.google.com:19302" }];
+      let u = null,
+        p = null,
+        pa = "",
+        presenceTimer = null,
+        inUn = null,
+        callUn = null,
+        candUn = null,
+        inc = null,
+        callRef = null,
+        pc = null,
+        ls = null,
+        startAt = null,
+        durTimer = null,
+        muted = false,
+        speaker = false,
+        enc = localStorage.getItem("encryptionEnabled") === "true",
+        mode = localStorage.getItem("displayMode") || "emoji";
+      const clean = (v) =>
+          v
+            .replace(/^@+/, "")
+            .replace(/[^a-zA-Z1-9_]/g, "")
+            .slice(0, 16),
+        hint = (el, t, e = false) => {
+          el.textContent = t;
+          el.classList.toggle("error", e);
+        },
+        open = (e) => {
+          e.classList.add("show");
+          document.body.style.overflow = "hidden";
+        },
+        close = (e) => {
+          e.classList.remove("show");
+          if (
+            !document.querySelector(".overlay.show") &&
+            !$("callScreen").classList.contains("show")
+          )
             document.body.style.overflow = "";
-
-            microphoneMuted = false;
-            speakerEnabled = false;
-
-            $("microphoneButton").classList.remove("muted");
-            $("speakerButton").classList.remove("active");
+        },
+        online = (d) => Date.now() - (d?.lastSeen?.toMillis?.() || 0) < 9e4;
+      function fmt(s) {
+        let h = Math.floor(s / 3600),
+          m = Math.floor((s % 3600) / 60),
+          x = s % 60;
+        return h
+          ? `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`
+          : `${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
+      }
+      function startDur() {
+        stopDur();
+        startAt = Date.now();
+        $("callStatus").textContent = "00:00";
+        durTimer = setInterval(
+          () =>
+            ($("callStatus").textContent = fmt(
+              Math.floor((Date.now() - startAt) / 1e3),
+            )),
+          1e3,
+        );
+      }
+      function stopDur() {
+        clearInterval(durTimer);
+        durTimer = null;
+        startAt = null;
+      }
+      function verify() {
+        let v = $("verification");
+        v.className = "verify";
+        v.textContent = "";
+        if (!enc) return;
+        v.classList.add("show");
+        if (mode === "code") {
+          let c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+          v.textContent = Array.from(
+            { length: 5 },
+            () => c[Math.floor(Math.random() * c.length)],
+          ).join("");
+        } else {
+          let e = [
+            "🐱",
+            "😺",
+            "🐯",
+            "🦊",
+            "🐼",
+            "🐸",
+            "🐧",
+            "🦄",
+            "🍀",
+            "🌙",
+            "⭐",
+            "🌈",
+            "🍓",
+            "🚀",
+            "🎧",
+            "🎮",
+            "⚡",
+            "💎",
+            "❄️",
+            "🪐",
+          ];
+          v.classList.add("emoji");
+          v.textContent = Array.from(
+            { length: 5 },
+            () => e[Math.floor(Math.random() * e.length)],
+          ).join(" ");
         }
-
-        function listenIncomingCalls() {
-            incomingUnsubscribe?.();
-
-            const incomingQuery =
-                query(
-                    collection(db, "calls"),
-                    where("calleeId", "==", currentUser.uid),
-                    where("status", "==", "ringing"),
-                    limit(1)
-                );
-
-            incomingUnsubscribe =
-                onSnapshot(incomingQuery, (snapshot) => {
-                    if (
-                        currentCallRef ||
-                        currentIncomingCall ||
-                        snapshot.empty
-                    ) {
-                        return;
-                    }
-
-                    const callDocument =
-                        snapshot.docs[0];
-
-                    currentIncomingCall = {
-                        id: callDocument.id,
-                        data: callDocument.data()
-                    };
-
-                    $("incomingAvatar").src =
-                        currentIncomingCall.data.callerAvatar || DEFAULT_AVATAR;
-
-                    $("incomingUsername").textContent =
-                        "@" + currentIncomingCall.data.callerUsername;
-
-                    openModal($("incomingModal"));
-                });
-        }
-
-        async function registerUser() {
-            registrationInProgress = true;
-
-            try {
-                showHint($("authHint"), "");
-
-                const username =
-                    cleanUsername($("authUsername").value);
-
-                if (!USERNAME_PATTERN.test(username)) {
-                    throw new Error("Укажите корректный юзернейм");
-                }
-
-                const credential =
-                    await createUserWithEmailAndPassword(
-                        auth,
-                        $("authEmail").value.trim(),
-                        $("authPassword").value
-                    );
-
-                currentUser =
-                    credential.user;
-
-                await saveProfile(username, "");
-
-                const profileSnapshot =
-                    await getDoc(doc(db, "users", currentUser.uid));
-
-                myProfile =
-                    profileSnapshot.exists()
-                        ? profileSnapshot.data()
-                        : null;
-
-                if (!myProfile) {
-                    throw new Error("Профиль не был создан. Проверь Firestore Rules.");
-                }
-
-                updateMyUi();
-
-                $("authScreen").classList.add("hidden");
-
-                await sendHeartbeat();
-
-                clearInterval(presenceTimer);
-
-                presenceTimer =
-                    window.setInterval(sendHeartbeat, 30000);
-
-                listenIncomingCalls();
-            } catch (error) {
-                showHint(
-                    $("authHint"),
-                    error.message,
-                    true
-                );
-
-                if (currentUser && !myProfile) {
-                    await signOut(auth).catch(() => {});
-                }
-            } finally {
-                registrationInProgress = false;
-            }
-        }
-
-        async function loginUser() {
-            try {
-                showHint($("authHint"), "");
-
-                await signInWithEmailAndPassword(
-                    auth,
-                    $("authEmail").value.trim(),
-                    $("authPassword").value
-                );
-            } catch (error) {
-                showHint(
-                    $("authHint"),
-                    "Не удалось войти: " + error.message,
-                    true
-                );
-            }
-        }
-
-        onAuthStateChanged(auth, async (user) => {
-            currentUser =
-                user;
-
-            if (!user) {
-                $("authScreen").classList.remove("hidden");
-
-                incomingUnsubscribe?.();
-
-                clearInterval(presenceTimer);
-
-                cleanupCall();
-
-                return;
-            }
-
-            const profileSnapshot =
-                await getDoc(doc(db, "users", user.uid));
-
-            myProfile =
-                profileSnapshot.exists()
-                    ? profileSnapshot.data()
-                    : null;
-
-            if (!myProfile) {
-                if (registrationInProgress) {
-                    return;
-                }
-
-                $("authScreen").classList.remove("hidden");
-
-                showHint(
-                    $("authHint"),
-                    "Профиль не найден. Зарегистрируйся заново или проверь Firestore Rules.",
-                    true
-                );
-
-                await signOut(auth);
-
-                return;
-            }
-
-            $("authScreen").classList.add("hidden");
-
-            updateMyUi();
-
-            await sendHeartbeat();
-
-            clearInterval(presenceTimer);
-
-            presenceTimer =
-                window.setInterval(sendHeartbeat, 30000);
-
-            listenIncomingCalls();
-        });
-
-        let searchDebounce = null;
-
-        $("searchInput").addEventListener("input", () => {
-            window.clearTimeout(searchDebounce);
-
-            searchDebounce =
-                window.setTimeout(searchUser, 350);
-        });
-
-        $("loginButton").addEventListener("click", loginUser);
-        $("registerButton").addEventListener("click", registerUser);
-
-        $("logoutButton").addEventListener("click", () => {
-            signOut(auth);
-        });
-
-        $("profileButton").addEventListener("click", () => {
-            pendingAvatar =
-                myProfile?.avatar || "";
-
-            updateMyUi();
-
-            showHint($("profileHint"), "");
-
-            openModal($("profileModal"));
-        });
-
-        $("closeProfileButton").addEventListener("click", () => {
-            closeModal($("profileModal"));
-        });
-
-        $("saveProfileButton").addEventListener("click", async () => {
-            try {
-                await saveProfile(
-                    $("profileUsernameInput").value,
-                    pendingAvatar
-                );
-
-                closeModal($("profileModal"));
-            } catch (error) {
-                showHint(
-                    $("profileHint"),
-                    error.message,
-                    true
-                );
-            }
-        });
-
-        $("profileUsernameInput").addEventListener("input", () => {
-            const username =
-                cleanUsername($("profileUsernameInput").value);
-
-            $("profileUsernameInput").value =
-                username ? "@" + username : "";
-        });
-
-        $("avatarFileInput").addEventListener("change", () => {
-            const file =
-                $("avatarFileInput").files[0];
-
-            if (!file) {
-                return;
-            }
-
-            if (file.size > 700 * 1024) {
-                showHint(
-                    $("profileHint"),
-                    "Выбери фото меньше 700 КБ",
-                    true
-                );
-
-                return;
-            }
-
-            const reader =
-                new FileReader();
-
-            reader.onload = () => {
-                pendingAvatar =
-                    reader.result;
-
-                $("profileAvatar").src =
-                    pendingAvatar;
-            };
-
-            reader.readAsDataURL(file);
-        });
-
-        $("settingsButton").addEventListener("click", () => {
-            openModal($("settingsModal"));
-        });
-
-        $("closeSettingsButton").addEventListener("click", () => {
-            closeModal($("settingsModal"));
-        });
-
-        $("encryptionSwitch").addEventListener("click", () => {
-            encryptionEnabled =
-                !encryptionEnabled;
-
-            localStorage.setItem(
-                "encryptionEnabled",
-                String(encryptionEnabled)
-            );
-
-            updateSettingsUi();
-        });
-
+      }
+      function settingsUI() {
+        $("encryptionSwitch").classList.toggle("on", enc);
+        $("displaySettings").classList.toggle("hidden", !enc);
         document
-            .querySelectorAll(".display-option")
-            .forEach((button) => {
-                button.addEventListener("click", () => {
-                    displayMode =
-                        button.dataset.displayMode;
+          .querySelectorAll(".mode")
+          .forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+      }
+      function myUI() {
+        $("myUsername").textContent = p ? `@${p.username}` : "Профиль";
+        $("miniAvatar").src = p?.avatar || D;
+        $("profileAvatar").src = p?.avatar || D;
+        $("profileUsername").value = p ? `@${p.username}` : "";
+      }
+      async function reserve(uid, name, old = "") {
+        let low = name.toLowerCase();
+        await runTransaction(db, async (tx) => {
+          let nr = doc(db, "usernames", low),
+            ns = await tx.get(nr);
+          if (ns.exists() && ns.data().uid !== uid)
+            throw Error("Этот юзернейм уже занят");
+          tx.set(nr, { uid, username: name, updatedAt: serverTimestamp() });
+          if (old && old.toLowerCase() !== low) {
+            let or = doc(db, "usernames", old.toLowerCase()),
+              os = await tx.get(or);
+            if (os.exists() && os.data().uid === uid) tx.delete(or);
+          }
+        });
+      }
+      async function saveProfile(name, av) {
+        name = clean(name);
+        if (!RE.test(name))
+          throw Error("Английские буквы, цифры 1–9 и _, максимум 16 символов");
+        await reserve(u.uid, name, p?.username || "");
+        await setDoc(
+          doc(db, "users", u.uid),
+          {
+            uid: u.uid,
+            username: name,
+            usernameLower: name.toLowerCase(),
+            avatar: av || "",
+            lastSeen: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+        p = (await getDoc(doc(db, "users", u.uid))).data();
+        myUI();
+      }
+      async function beat() {
+        if (u)
+          await setDoc(
+            doc(db, "users", u.uid),
+            { lastSeen: serverTimestamp() },
+            { merge: true },
+          ).catch(() => {});
+      }
+      function render(x) {
+        let l = $("contactsList"),
+          e = $("emptyState");
+        l.innerHTML = "";
+        if (!x) {
+          e.classList.remove("hidden");
+          return;
+        }
+        e.classList.add("hidden");
+        let a = document.createElement("article");
+        a.className = "contact";
+        a.innerHTML = `<div class="avaw"><img class="ava" src="${x.avatar || D}"><span class="presence ${online(x) ? "on" : ""}"></span></div><div class="ci"><h3>@${x.username}</h3><p>${online(x) ? "В сети" : "Не в сети"}</p></div><button class="call"><svg viewBox="0 0 24 24"><path d="M7.4 4.5 9.6 8a1.5 1.5 0 0 1-.2 1.8L8.2 11a15.5 15.5 0 0 0 4.8 4.8l1.2-1.2a1.5 1.5 0 0 1 1.8-.2l3.5 2.2a1.5 1.5 0 0 1 .7 1.5v1.4a1.5 1.5 0 0 1-1.5 1.5C10 21 3 14 3 5.3a1.5 1.5 0 0 1 1.5-1.5h1.4a1.5 1.5 0 0 1 1.5.7Z"></path></svg></button>`;
+        a.querySelector(".call").onclick = () => outCall(x);
+        l.appendChild(a);
+      }
+      async function search() {
+        let n = clean($("searchInput").value);
+        if (!n) return render(null);
+        let m = await getDoc(doc(db, "usernames", n.toLowerCase()));
+        if (!m.exists()) {
+          render(null);
+          $("emptyState").textContent = "Пользователь не найден";
+          return;
+        }
+        if (m.data().uid === u.uid) {
+          render(null);
+          $("emptyState").textContent = "Это ваш аккаунт";
+          return;
+        }
+        let s = await getDoc(doc(db, "users", m.data().uid));
+        render(s.exists() ? s.data() : null);
+      }
+      async function mic() {
+        if (ls) return ls;
+        ls = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
+        return ls;
+      }
+      function newPC() {
+        let x = new RTCPeerConnection({ iceServers: ICE });
+        x.ontrack = (e) => {
+          $("remoteAudio").srcObject = e.streams[0];
+          $("remoteAudio")
+            .play()
+            .catch(() => {});
+        };
+        x.onconnectionstatechange = () => {
+          if (x.connectionState === "connected") startDur();
+          if (["failed", "disconnected"].includes(x.connectionState))
+            $("callStatus").textContent = "Соединение потеряно";
+        };
+        return x;
+      }
+      function showCall(x, s) {
+        $("callAvatar").src = x.avatar || D;
+        $("callName").textContent = `@${x.username}`;
+        $("callStatus").textContent = s;
+        verify();
+        $("callScreen").classList.add("show");
+        document.body.style.overflow = "hidden";
+      }
+      async function outCall(t) {
+        try {
+          if (callRef) return;
+          showCall(t, "Вызов…");
+          let st = await mic();
+          pc = newPC();
+          st.getTracks().forEach((q) => pc.addTrack(q, st));
+          callRef = doc(collection(db, "calls"));
+          let cc = collection(callRef, "callerCandidates"),
+            dc = collection(callRef, "calleeCandidates");
+          pc.onicecandidate = (e) =>
+            e.candidate && addDoc(cc, e.candidate.toJSON());
+          candUn = onSnapshot(dc, (s) =>
+            s
+              .docChanges()
+              .forEach(
+                (c) =>
+                  c.type === "added" &&
+                  pc
+                    ?.addIceCandidate(new RTCIceCandidate(c.doc.data()))
+                    .catch(() => {}),
+              ),
+          );
+          let off = await pc.createOffer();
+          await pc.setLocalDescription(off);
+          await setDoc(callRef, {
+            callerId: u.uid,
+            calleeId: t.uid,
+            callerUsername: p.username,
+            callerAvatar: p.avatar || "",
+            calleeUsername: t.username,
+            calleeAvatar: t.avatar || "",
+            status: "ringing",
+            createdAt: serverTimestamp(),
+            offer: { type: off.type, sdp: off.sdp },
+          });
+          callUn = onSnapshot(callRef, async (s) => {
+            if (!s.exists()) return;
+            let d = s.data();
+            if (d.answer && !pc.currentRemoteDescription)
+              await pc.setRemoteDescription(
+                new RTCSessionDescription(d.answer),
+              );
+            if (d.status === "rejected") {
+              $("callStatus").textContent = "Вызов отклонён";
+              setTimeout(cleanup, 700);
+            }
+            if (d.status === "ended") cleanup();
+          });
+        } catch (e) {
+          alert("Не удалось начать звонок: " + e.message);
+          cleanup();
+        }
+      }
+      async function answer() {
+        if (!inc) return;
+        try {
+          close($("incomingOverlay"));
+          callRef = doc(db, "calls", inc.id);
+          let d = inc.data;
+          showCall(
+            { username: d.callerUsername, avatar: d.callerAvatar },
+            "Соединение…",
+          );
+          let st = await mic();
+          pc = newPC();
+          st.getTracks().forEach((q) => pc.addTrack(q, st));
+          let cc = collection(callRef, "callerCandidates"),
+            dc = collection(callRef, "calleeCandidates");
+          pc.onicecandidate = (e) =>
+            e.candidate && addDoc(dc, e.candidate.toJSON());
+          candUn = onSnapshot(cc, (s) =>
+            s
+              .docChanges()
+              .forEach(
+                (c) =>
+                  c.type === "added" &&
+                  pc
+                    ?.addIceCandidate(new RTCIceCandidate(c.doc.data()))
+                    .catch(() => {}),
+              ),
+          );
+          await pc.setRemoteDescription(new RTCSessionDescription(d.offer));
+          let an = await pc.createAnswer();
+          await pc.setLocalDescription(an);
+          await updateDoc(callRef, {
+            answer: { type: an.type, sdp: an.sdp },
+            status: "accepted",
+            answeredAt: serverTimestamp(),
+          });
+          callUn = onSnapshot(callRef, (s) => {
+            if (!s.exists() || s.data().status === "ended") cleanup();
+          });
+          inc = null;
+        } catch (e) {
+          alert("Не удалось принять звонок: " + e.message);
+          cleanup();
+        }
+      }
+      async function reject() {
+        if (!inc) return;
+        await updateDoc(doc(db, "calls", inc.id), {
+          status: "rejected",
+          endedAt: serverTimestamp(),
+        }).catch(() => {});
+        inc = null;
+        close($("incomingOverlay"));
+      }
+      async function hang() {
+        if (callRef)
+          await updateDoc(callRef, {
+            status: "ended",
+            endedAt: serverTimestamp(),
+          }).catch(() => {});
+        cleanup();
+      }
+      function cleanup() {
+        stopDur();
+        callUn?.();
+        candUn?.();
+        callUn = candUn = null;
+        pc?.close();
+        pc = null;
+        ls?.getTracks().forEach((t) => t.stop());
+        ls = null;
+        $("remoteAudio").srcObject = null;
+        callRef = inc = null;
+        $("callScreen").classList.remove("show");
+        close($("incomingOverlay"));
+        $("verification").className = "verify";
+        document.body.style.overflow = "";
+        muted = speaker = false;
+        $("micBtn").classList.remove("muted");
+        $("speakerBtn").classList.remove("on");
+      }
+      function listen() {
+        inUn?.();
+        let q = query(
+          collection(db, "calls"),
+          where("calleeId", "==", u.uid),
+          where("status", "==", "ringing"),
+          limit(1),
+        );
+        inUn = onSnapshot(q, (s) => {
+          if (callRef || inc || s.empty) return;
+          let d = s.docs[0];
+          inc = { id: d.id, data: d.data() };
+          $("incomingAvatar").src = d.data().callerAvatar || D;
+          $("incomingUsername").textContent = `@${d.data().callerUsername}`;
+          open($("incomingOverlay"));
+        });
+      }
+      let authBootstrapPromise = null;
 
-                    localStorage.setItem(
-                        "displayMode",
-                        displayMode
-                    );
+      function firebaseErrorMessage(error) {
+        const code = error?.code || "";
+        const messages = {
+          "auth/invalid-email": "Неверный формат email.",
+          "auth/missing-password": "Введите пароль.",
+          "auth/weak-password": "Пароль должен содержать минимум 6 символов.",
+          "auth/email-already-in-use": "Этот email уже зарегистрирован. Нажмите «Войти».",
+          "auth/invalid-credential": "Неверный email или пароль.",
+          "auth/user-not-found": "Аккаунт не найден.",
+          "auth/wrong-password": "Неверный пароль.",
+          "auth/too-many-requests": "Слишком много попыток. Попробуйте позже.",
+          "auth/network-request-failed": "Ошибка сети. Проверьте интернет.",
+          "permission-denied": "Firestore запретил доступ. Проверьте Rules.",
+          "firestore/permission-denied": "Firestore запретил доступ. Проверьте Rules.",
+        };
+        return messages[code] || error?.message || "Неизвестная ошибка.";
+      }
 
-                    updateSettingsUi();
-                });
+      function fallbackUsername(user) {
+        const emailPart = (user.email || "user")
+          .split("@")[0]
+          .replace(/[^a-zA-Z1-9_]/g, "")
+          .replace(/0/g, "")
+          .slice(0, 9) || "user";
+        const uidPart = user.uid
+          .replace(/[^a-zA-Z1-9]/g, "")
+          .replace(/0/g, "")
+          .slice(0, 5) || "12345";
+        return clean(`${emailPart}_${uidPart}`);
+      }
+
+      function randomSuffix() {
+        const chars = "abcdefghijklmnopqrstuvwxyz123456789";
+        return Array.from({ length: 5 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      }
+
+      async function ensureProfile(user, preferredUsername = "") {
+        const userRef = doc(db, "users", user.uid);
+        const existing = await getDoc(userRef);
+        if (existing.exists()) return existing.data();
+
+        const base = clean(preferredUsername) || fallbackUsername(user);
+
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const suffix = attempt === 0 ? "" : `_${randomSuffix()}`;
+          const candidate = `${base.slice(0, 16 - suffix.length)}${suffix}`.slice(0, 16);
+          if (!RE.test(candidate)) continue;
+
+          const usernameRef = doc(db, "usernames", candidate.toLowerCase());
+
+          try {
+            await runTransaction(db, async (tx) => {
+              const profileSnap = await tx.get(userRef);
+              if (profileSnap.exists()) return;
+
+              const usernameSnap = await tx.get(usernameRef);
+              if (usernameSnap.exists() && usernameSnap.data().uid !== user.uid) {
+                const err = new Error("USERNAME_TAKEN");
+                err.code = "USERNAME_TAKEN";
+                throw err;
+              }
+
+              tx.set(usernameRef, {
+                uid: user.uid,
+                username: candidate,
+                updatedAt: serverTimestamp(),
+              });
+
+              tx.set(userRef, {
+                uid: user.uid,
+                username: candidate,
+                usernameLower: candidate.toLowerCase(),
+                avatar: "",
+                lastSeen: serverTimestamp(),
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
             });
 
-        $("answerCallButton").addEventListener("click", answerIncomingCall);
-        $("rejectCallButton").addEventListener("click", rejectIncomingCall);
-        $("endCallButton").addEventListener("click", endCall);
+            const created = await getDoc(userRef);
+            if (created.exists()) return created.data();
+          } catch (error) {
+            if (error?.code === "USERNAME_TAKEN") continue;
+            throw error;
+          }
+        }
 
-        $("microphoneButton").addEventListener("click", () => {
-            microphoneMuted =
-                !microphoneMuted;
+        throw new Error("Не удалось создать свободный юзернейм.");
+      }
 
-            localStream
-                ?.getAudioTracks()
-                .forEach((track) => {
-                    track.enabled =
-                        !microphoneMuted;
-                });
+      async function startSession(user, preferredUsername = "") {
+        u = user;
+        p = await ensureProfile(user, preferredUsername);
+        myUI();
+        $("authScreen").classList.add("hidden");
+        hint($("authHint"), "");
+        await beat();
+        clearInterval(presenceTimer);
+        presenceTimer = setInterval(beat, 3e4);
+        listen();
+      }
 
-            $("microphoneButton").classList.toggle(
-                "muted",
-                microphoneMuted
-            );
-        });
+      async function reg() {
+        const button = $("registerBtn");
+        button.disabled = true;
 
-        $("speakerButton").addEventListener("click", () => {
-            speakerEnabled =
-                !speakerEnabled;
+        try {
+          hint($("authHint"), "");
 
-            $("speakerButton").classList.toggle(
-                "active",
-                speakerEnabled
-            );
+          const email = $("authEmail").value.trim();
+          const password = $("authPassword").value;
+          const username = clean($("authUsername").value);
 
-            $("remoteAudio").volume =
-                speakerEnabled ? 1 : 0.85;
+          if (!email) throw new Error("Введите email.");
+          if (password.length < 6) throw new Error("Пароль должен содержать минимум 6 символов.");
+          if (!RE.test(username)) throw new Error("Юзернейм: английские буквы, цифры 1–9 и _, максимум 16 символов.");
 
-            $("remoteAudio")
-                .play()
-                .catch(() => {});
-        });
+          const credential = await createUserWithEmailAndPassword(auth, email, password);
+          await startSession(credential.user, username);
+        } catch (error) {
+          hint($("authHint"), firebaseErrorMessage(error), true);
+        } finally {
+          button.disabled = false;
+        }
+      }
 
-        document
-            .querySelectorAll(".modal-overlay")
-            .forEach((overlay) => {
-                overlay.addEventListener("click", (event) => {
-                    if (
-                        event.target === overlay &&
-                        overlay !== $("incomingModal")
-                    ) {
-                        closeModal(overlay);
-                    }
-                });
-            });
+      async function login() {
+        const button = $("loginBtn");
+        button.disabled = true;
 
-        updateSettingsUi();
-        renderFoundUser(null);
+        try {
+          hint($("authHint"), "");
+
+          const email = $("authEmail").value.trim();
+          const password = $("authPassword").value;
+          const preferredUsername = clean($("authUsername").value);
+
+          if (!email) throw new Error("Введите email.");
+          if (!password) throw new Error("Введите пароль.");
+
+          const credential = await signInWithEmailAndPassword(auth, email, password);
+          await startSession(credential.user, preferredUsername);
+        } catch (error) {
+          hint($("authHint"), firebaseErrorMessage(error), true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+        u = user;
+
+        if (!user) {
+          $("authScreen").classList.remove("hidden");
+          inUn?.();
+          inUn = null;
+          clearInterval(presenceTimer);
+          cleanup();
+          return;
+        }
+
+        if (authBootstrapPromise) return;
+
+        authBootstrapPromise = startSession(
+          user,
+          clean($("authUsername").value),
+        );
+
+        try {
+          await authBootstrapPromise;
+        } catch (error) {
+          $("authScreen").classList.remove("hidden");
+          hint($("authHint"), firebaseErrorMessage(error), true);
+        } finally {
+          authBootstrapPromise = null;
+        }
+      });
+      let td = null;
+      $("searchInput").oninput = () => {
+        clearTimeout(td);
+        td = setTimeout(search, 350);
+      };
+      $("loginBtn").onclick = login;
+      $("registerBtn").onclick = reg;
+      $("logoutBtn").onclick = () => signOut(auth);
+      $("profileBtn").onclick = () => {
+        pa = p?.avatar || "";
+        myUI();
+        hint($("profileHint"), "");
+        open($("profileOverlay"));
+      };
+      $("profileClose").onclick = () => close($("profileOverlay"));
+      $("profileSave").onclick = async () => {
+        try {
+          await saveProfile($("profileUsername").value, pa);
+          close($("profileOverlay"));
+        } catch (e) {
+          hint($("profileHint"), e.message, true);
+        }
+      };
+      $("profileUsername").oninput = () => {
+        let c = clean($("profileUsername").value);
+        $("profileUsername").value = c ? `@${c}` : "";
+      };
+      $("avatarInput").onchange = () => {
+        let f = $("avatarInput").files[0];
+        if (!f) return;
+        if (f.size > 700 * 1024)
+          return hint($("profileHint"), "Выбери фото меньше 700 КБ", true);
+        let r = new FileReader();
+        r.onload = () => {
+          pa = r.result;
+          $("profileAvatar").src = pa;
+        };
+        r.readAsDataURL(f);
+      };
+      $("settingsBtn").onclick = () => open($("settingsOverlay"));
+      $("settingsClose").onclick = () => close($("settingsOverlay"));
+      $("encryptionSwitch").onclick = () => {
+        enc = !enc;
+        localStorage.setItem("encryptionEnabled", String(enc));
+        settingsUI();
+      };
+      document.querySelectorAll(".mode").forEach(
+        (b) =>
+          (b.onclick = () => {
+            mode = b.dataset.mode;
+            localStorage.setItem("displayMode", mode);
+            settingsUI();
+          }),
+      );
+      $("answerBtn").onclick = answer;
+      $("rejectBtn").onclick = reject;
+      $("hangupBtn").onclick = hang;
+      $("micBtn").onclick = () => {
+        muted = !muted;
+        ls?.getAudioTracks().forEach((t) => (t.enabled = !muted));
+        $("micBtn").classList.toggle("muted", muted);
+      };
+      $("speakerBtn").onclick = () => {
+        speaker = !speaker;
+        $("speakerBtn").classList.toggle("on", speaker);
+        $("remoteAudio").volume = speaker ? 1 : 0.85;
+        $("remoteAudio")
+          .play()
+          .catch(() => {});
+      };
+      document.querySelectorAll(".overlay").forEach(
+        (o) =>
+          (o.onclick = (e) => {
+            if (e.target === o && o !== $("incomingOverlay")) close(o);
+          }),
+      );
+      settingsUI();
+      render(null);
     </script>
-</body>
+  </body>
 </html>
