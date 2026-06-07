@@ -1432,6 +1432,93 @@
       padding: 5px 6px !important;
     }
 
+
+    /* Профиль: аватар снова строго круглый */
+    .profile-avatar-wrap,
+    .profile-avatar-wrap > div,
+    .profile-avatar-wrap img,
+    .profile-avatar-wrap .default-avatar {
+      border-radius: 50% !important;
+      overflow: hidden;
+    }
+
+    .profile-avatar-wrap img {
+      display: block;
+      object-fit: cover;
+    }
+
+    /* Настройки шифрования */
+    .settings-divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .encryption-options {
+      max-height: 0;
+      overflow: hidden;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-5px);
+      transition:
+        max-height .25s ease,
+        opacity .2s ease,
+        transform .2s ease,
+        visibility .2s ease;
+    }
+
+    .encryption-options.visible {
+      max-height: 90px;
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .display-setting {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 62px;
+    }
+
+    .display-options {
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      border-radius: 11px;
+      background: #242424;
+    }
+
+    .display-option {
+      min-height: 34px;
+      padding: 0 10px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      transition:
+        background .18s ease,
+        color .18s ease,
+        transform .15s ease;
+    }
+
+    .display-option:active {
+      transform: scale(.95);
+    }
+
+    .display-option.active {
+      background: var(--white);
+      color: #151515;
+    }
+
+    @media (max-width: 370px) {
+      .display-option {
+        padding: 0 8px;
+        font-size: 11px;
+      }
+    }
+
   </style>
 </head>
 
@@ -1573,10 +1660,59 @@
     <div class="modal">
       <div class="handle"></div>
       <h2 class="settings-title">Настройки</h2>
+
       <div class="setting-row">
         <span>Звуки</span>
-        <button id="soundSwitch" class="switch" type="button" role="switch"></button>
+        <button
+          id="soundSwitch"
+          class="switch"
+          type="button"
+          role="switch"
+          aria-checked="true"
+          aria-label="Звуки"
+        ></button>
       </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="setting-row">
+        <span>Шифрование</span>
+        <button
+          id="encryptionSwitch"
+          class="switch"
+          type="button"
+          role="switch"
+          aria-checked="false"
+          aria-label="Шифрование"
+        ></button>
+      </div>
+
+      <div id="encryptionOptions" class="encryption-options">
+        <div class="settings-divider"></div>
+
+        <div class="display-setting">
+          <span>Отображение</span>
+
+          <div class="display-options">
+            <button
+              class="display-option active"
+              type="button"
+              data-display-mode="emoji"
+            >
+              Смайлики
+            </button>
+
+            <button
+              class="display-option"
+              type="button"
+              data-display-mode="code"
+            >
+              Цифровой код
+            </button>
+          </div>
+        </div>
+      </div>
+
       <button id="logoutButton" class="btn" type="button" style="width:100%;margin-top:18px">Выйти</button>
       <button id="closeSettingsButton" class="btn primary" type="button" style="width:100%;margin-top:10px">Готово</button>
     </div>
@@ -1676,7 +1812,15 @@
     let longPressTimer = null;
     let longPressStart = null;
     let audioContext = null;
-    let soundEnabled = localStorage.getItem("messengerSoundEnabled") !== "false";
+
+    let soundEnabled =
+      localStorage.getItem("messengerSoundEnabled") !== "false";
+
+    let encryptionEnabled =
+      localStorage.getItem("encryptionEnabled") === "true";
+
+    let displayMode =
+      localStorage.getItem("displayMode") || "emoji";
 
     function defaultAvatarSvg(size = 30, className = "") {
       return `
@@ -1835,6 +1979,32 @@
     function updateSoundUi() {
       $("soundSwitch").classList.toggle("active", soundEnabled);
       $("soundSwitch").setAttribute("aria-checked", String(soundEnabled));
+    }
+
+    function updateEncryptionUi() {
+      $("encryptionSwitch").classList.toggle(
+        "active",
+        encryptionEnabled
+      );
+
+      $("encryptionSwitch").setAttribute(
+        "aria-checked",
+        String(encryptionEnabled)
+      );
+
+      $("encryptionOptions").classList.toggle(
+        "visible",
+        encryptionEnabled
+      );
+
+      document
+        .querySelectorAll(".display-option")
+        .forEach((button) => {
+          button.classList.toggle(
+            "active",
+            button.dataset.displayMode === displayMode
+          );
+        });
     }
 
     async function reserveUsername(uid, username, oldUsername = "") {
@@ -3130,6 +3300,7 @@
 
     function openSettings() {
       updateSoundUi();
+      updateEncryptionUi();
       openModal($("settingsModal"));
     }
 
@@ -3209,6 +3380,42 @@
       updateSoundUi();
       playClick();
     });
+
+    $("encryptionSwitch").addEventListener("click", () => {
+      encryptionEnabled = !encryptionEnabled;
+
+      localStorage.setItem(
+        "encryptionEnabled",
+        String(encryptionEnabled)
+      );
+
+      updateEncryptionUi();
+      playClick();
+    });
+
+    document
+      .querySelectorAll(".display-option")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const selectedMode =
+            button.dataset.displayMode;
+
+          if (displayMode === selectedMode) {
+            playClick();
+            return;
+          }
+
+          displayMode = selectedMode;
+
+          localStorage.setItem(
+            "displayMode",
+            displayMode
+          );
+
+          updateEncryptionUi();
+          playClick();
+        });
+      });
 
     $("backButton").addEventListener("click", closeChat);
 
@@ -3346,6 +3553,7 @@
     }, { passive: true });
 
     updateSoundUi();
+    updateEncryptionUi();
   </script>
 </body>
 </html>
