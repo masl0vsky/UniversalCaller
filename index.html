@@ -1411,6 +1411,27 @@
       font-size: 13px !important;
     }
 
+
+    /* Окончательный размер аватаров */
+    .chat-list-avatar,
+    .user-card .avatar,
+    .chat-header-avatar,
+    .chat-list-item .default-avatar,
+    .user-card .default-avatar,
+    .chat-header-avatar.default-avatar {
+      width: 30px !important;
+      height: 30px !important;
+      min-width: 30px !important;
+      flex: 0 0 30px !important;
+    }
+
+    .chat-list-item,
+    .user-card {
+      gap: 5px !important;
+      min-height: 48px !important;
+      padding: 5px 6px !important;
+    }
+
   </style>
 </head>
 
@@ -1622,6 +1643,7 @@
       deleteDoc,
       serverTimestamp,
       runTransaction,
+      writeBatch,
       arrayUnion
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
@@ -1656,7 +1678,7 @@
     let audioContext = null;
     let soundEnabled = localStorage.getItem("messengerSoundEnabled") !== "false";
 
-    function defaultAvatarSvg(size = 34, className = "") {
+    function defaultAvatarSvg(size = 30, className = "") {
       return `
         <div class="default-avatar ${className}" style="width:${size}px;height:${size}px;min-width:${size}px;flex-basis:${size}px">
           <svg viewBox="0 0 512 512" aria-hidden="true">
@@ -1680,7 +1702,7 @@
       `;
     }
 
-    function avatarHtml(profile, className = "avatar", size = 34) {
+    function avatarHtml(profile, className = "avatar", size = 30) {
       if (profile?.avatar) {
         return `<img class="${className}" src="${profile.avatar}" alt="">`;
       }
@@ -2013,6 +2035,91 @@
       });
     }
 
+
+    function userChatSummaryRef(ownerUid, chatId) {
+      return doc(db, "userChats", ownerUid, "items", chatId);
+    }
+
+    function buildUserChatSummary(ownerUid, peer, chatId, payload = {}) {
+      return {
+        chatId,
+        ownerUid,
+        peerUid: peer.uid,
+        peerUsername: peer.username || "Пользователь",
+        peerAvatar: peer.avatar || "",
+        lastMessage: payload.lastMessage || "",
+        lastSenderId: payload.lastSenderId || "",
+        updatedAt: payload.updatedAt || serverTimestamp()
+      };
+    }
+
+    async function updateUserChatIndexes({
+      chatId,
+      peer,
+      lastMessage = "",
+      lastSenderId = "",
+      updatedAt = serverTimestamp()
+    }) {
+      const batch = writeBatch(db);
+
+      batch.set(
+        userChatSummaryRef(currentUser.uid, chatId),
+        buildUserChatSummary(
+          currentUser.uid,
+          peer,
+          chatId,
+          {
+            lastMessage,
+            lastSenderId,
+            updatedAt
+          }
+        ),
+        { merge: true }
+      );
+
+      batch.set(
+        userChatSummaryRef(peer.uid, chatId),
+        buildUserChatSummary(
+          peer.uid,
+          {
+            uid: currentUser.uid,
+            username: myProfile.username,
+            avatar: myProfile.avatar || ""
+          },
+          chatId,
+          {
+            lastMessage,
+            lastSenderId,
+            updatedAt
+          }
+        ),
+        { merge: true }
+      );
+
+      await batch.commit();
+    }
+
+    async function backfillUserChatIndexFromChat(chat) {
+      const peer = peerFromChat(chat);
+
+      if (!peer) return;
+
+      await setDoc(
+        userChatSummaryRef(currentUser.uid, chat.id),
+        buildUserChatSummary(
+          currentUser.uid,
+          peer,
+          chat.id,
+          {
+            lastMessage: chat.lastMessage || "",
+            lastSenderId: chat.lastSenderId || "",
+            updatedAt: chat.updatedAt || serverTimestamp()
+          }
+        ),
+        { merge: true }
+      );
+    }
+
     function peerFromChat(chatData) {
       let peerUid = "";
 
@@ -2061,16 +2168,15 @@
       const empty = $("emptyState");
 
       list.innerHTML = "";
+      label.classList.add("hidden");
 
       const visibleChats = chats
-        .filter((chat) => Boolean(peerFromChat(chat)))
+        .filter((chat) => chat.peerUid)
         .sort((a, b) => {
           const aTime = a.updatedAt?.toMillis?.() || 0;
           const bTime = b.updatedAt?.toMillis?.() || 0;
           return bTime - aTime;
         });
-
-      label.classList.add("hidden");
 
       if (!$("searchInput").value.trim()) {
         empty.textContent =
@@ -2085,7 +2191,11 @@
       }
 
       for (const chat of visibleChats) {
-        const peer = peerFromChat(chat);
+        const peer = {
+          uid: chat.peerUid,
+          username: chat.peerUsername || "Пользователь",
+          avatar: chat.peerAvatar || ""
+        };
 
         const item = document.createElement("button");
         item.type = "button";
@@ -2095,7 +2205,7 @@
           chat.lastSenderId === currentUser.uid;
 
         item.innerHTML = `
-          ${avatarHtml(peer, "chat-list-avatar", 34)}
+          ${avatarHtml(peer, "chat-list-avatar", 30)}
           <div class="chat-list-text">
             <div class="chat-list-name">${escapeHtml(peer.username)}</div>
             <div class="chat-list-preview">${escapeHtml(chat.lastMessage || "Диалог")}</div>
@@ -2108,7 +2218,7 @@
 
         item.addEventListener("click", () => {
           playClick();
-          openChat(peer, chat.id);
+          openChat(peer, chat.chatId || chat.id);
         });
 
         list.appendChild(item);
@@ -2122,90 +2232,74 @@
         chatListUnsubscribe?.();
       }
 
-      const mergedChats = new Map();
-
-      const rerender = () => {
-        renderChatList([...mergedChats.values()]);
-      };
-
-      const normalizeChat = (chatDoc) => {
-        const data = chatDoc.data();
-
-        return {
-          id: chatDoc.id,
-          ...data,
-          members: Array.isArray(data.members)
-            ? data.members
-            : Object.keys(data.memberMap || {})
-        };
-      };
-
-      const handleSnapshot = (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const chat = normalizeChat(change.doc);
-
-          if (change.type === "removed") {
-            mergedChats.delete(change.doc.id);
-          } else {
-            mergedChats.set(change.doc.id, chat);
-          }
-        });
-
-        rerender();
-      };
-
-      const handleError = (error) => {
-        console.warn("Не удалось загрузить список чатов:", error);
-      };
-
-      const membersQuery = query(
-        collection(db, "chats"),
-        where("members", "array-contains", currentUser.uid)
+      const summariesQuery = query(
+        collection(db, "userChats", currentUser.uid, "items"),
+        orderBy("updatedAt", "desc")
       );
 
-      const legacyQuery = query(
-        collection(db, "chats"),
-        where(`memberMap.${currentUser.uid}`, "==", true)
+      const summaryUnsubscribe = onSnapshot(
+        summariesQuery,
+        (snapshot) => {
+          renderChatList(
+            snapshot.docs.map((itemDoc) => ({
+              id: itemDoc.id,
+              ...itemDoc.data()
+            }))
+          );
+        },
+        (error) => {
+          console.warn("Не удалось загрузить список диалогов:", error);
+          $("emptyState").textContent = "Не удалось загрузить диалоги";
+          $("emptyState").classList.remove("hidden");
+        }
       );
 
-      chatListUnsubscribe = [
-        onSnapshot(membersQuery, handleSnapshot, handleError),
-        onSnapshot(legacyQuery, handleSnapshot, handleError)
-      ];
+      chatListUnsubscribe = [summaryUnsubscribe];
 
       /*
-       * Подстраховка для старых диалогов: если документ был создан
-       * прежней версией кода без поля members, мы всё равно поднимем его
-       * по memberMap и сразу нормализуем.
+       * Одноразовое восстановление старых чатов.
+       * Это нужно только для переписок, созданных предыдущими версиями.
        */
-      setTimeout(async () => {
-        try {
-          const snapshot = await getDocs(legacyQuery);
+      (async () => {
+        const found = new Map();
 
+        const collect = (snapshot) => {
           for (const chatDoc of snapshot.docs) {
-            const chat = normalizeChat(chatDoc);
-            mergedChats.set(chat.id, chat);
-
-            if (
-              !Array.isArray(chatDoc.data().members) ||
-              !chatDoc.data().members.includes(currentUser.uid)
-            ) {
-              await setDoc(
-                doc(db, "chats", chat.id),
-                {
-                  members: Object.keys(chatDoc.data().memberMap || {}),
-                  updatedAt: chatDoc.data().updatedAt || serverTimestamp()
-                },
-                { merge: true }
-              ).catch(() => {});
-            }
+            found.set(chatDoc.id, {
+              id: chatDoc.id,
+              ...chatDoc.data()
+            });
           }
+        };
 
-          rerender();
+        try {
+          const membersQuery = query(
+            collection(db, "chats"),
+            where("members", "array-contains", currentUser.uid)
+          );
+
+          collect(await getDocs(membersQuery));
         } catch (error) {
-          console.warn("Не удалось восстановить старые диалоги:", error);
+          console.warn("Не удалось прочитать новые чаты:", error);
         }
-      }, 600);
+
+        try {
+          const legacyQuery = query(
+            collection(db, "chats"),
+            where(`memberMap.${currentUser.uid}`, "==", true)
+          );
+
+          collect(await getDocs(legacyQuery));
+        } catch (error) {
+          console.warn("Не удалось прочитать старые чаты:", error);
+        }
+
+        for (const chat of found.values()) {
+          await backfillUserChatIndexFromChat(chat).catch((error) => {
+            console.warn("Не удалось восстановить чат:", chat.id, error);
+          });
+        }
+      })();
     }
 
     function renderFoundUser(profile) {
@@ -2225,7 +2319,7 @@
       card.type = "button";
       card.className = "user-card";
       card.innerHTML = `
-        ${avatarHtml(profile, "avatar", 34)}
+        ${avatarHtml(profile, "avatar", 30)}
         <div class="user-card-name">${escapeHtml(profile.username)}</div>
       `;
 
@@ -2287,6 +2381,8 @@
       const chatId = chatIdFor(currentUser.uid, peer.uid);
       const chatRef = doc(db, "chats", chatId);
 
+      const now = serverTimestamp();
+
       await setDoc(chatRef, {
         id: chatId,
         members: [currentUser.uid, peer.uid],
@@ -2302,8 +2398,16 @@
           [currentUser.uid]: myProfile.avatar || "",
           [peer.uid]: peer.avatar || ""
         },
-        updatedAt: serverTimestamp()
+        updatedAt: now
       }, { merge: true });
+
+      await updateUserChatIndexes({
+        chatId,
+        peer,
+        lastMessage: "",
+        lastSenderId: "",
+        updatedAt: now
+      });
 
       return chatId;
     }
@@ -2805,22 +2909,34 @@
 
         const latest = remaining[0];
 
+        const latestPreview = latest
+          ? latest.text ||
+            (latest.attachment?.type?.startsWith("image/")
+              ? "Фотография"
+              : latest.attachment?.type?.startsWith("video/")
+                ? "Видео"
+                : "Вложение")
+          : "";
+
+        const latestUpdatedAt = serverTimestamp();
+
         await setDoc(
           doc(db, "chats", activeChatId),
           {
-            lastMessage: latest
-              ? latest.text ||
-                (latest.attachment?.type?.startsWith("image/")
-                  ? "Фотография"
-                  : latest.attachment?.type?.startsWith("video/")
-                    ? "Видео"
-                    : "Вложение")
-              : "",
+            lastMessage: latestPreview,
             lastSenderId: latest?.senderId || "",
-            updatedAt: serverTimestamp()
+            updatedAt: latestUpdatedAt
           },
           { merge: true }
         );
+
+        await updateUserChatIndexes({
+          chatId: activeChatId,
+          peer: activePeer,
+          lastMessage: latestPreview,
+          lastSenderId: latest?.senderId || "",
+          updatedAt: latestUpdatedAt
+        });
 
         if (replyTarget?.id === deletingId) {
           clearReply();
@@ -2911,16 +3027,46 @@
 
         await addDoc(collection(db, "chats", activeChatId, "messages"), message);
 
+        const listPreview =
+          selectedAttachment
+            ? (
+                text ||
+                (selectedAttachment.type?.startsWith("image/")
+                  ? "Фотография"
+                  : selectedAttachment.type?.startsWith("video/")
+                    ? "Видео"
+                    : "Вложение")
+              )
+            : text;
+
+        const listUpdatedAt = serverTimestamp();
+
         await setDoc(doc(db, "chats", activeChatId), {
-          lastMessage: selectedAttachment ? (text || "Вложение") : text,
+          lastMessage: listPreview,
           lastSenderId: currentUser.uid,
-          updatedAt: serverTimestamp(),
+          updatedAt: listUpdatedAt,
           members: [currentUser.uid, activePeer.uid],
           memberMap: {
             [currentUser.uid]: true,
             [activePeer.uid]: true
+          },
+          usernames: {
+            [currentUser.uid]: myProfile.username,
+            [activePeer.uid]: activePeer.username
+          },
+          avatars: {
+            [currentUser.uid]: myProfile.avatar || "",
+            [activePeer.uid]: activePeer.avatar || ""
           }
         }, { merge: true });
+
+        await updateUserChatIndexes({
+          chatId: activeChatId,
+          peer: activePeer,
+          lastMessage: listPreview,
+          lastSenderId: currentUser.uid,
+          updatedAt: listUpdatedAt
+        });
 
         $("messageInput").value = "";
         resizeMessageInput();
