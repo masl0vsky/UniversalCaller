@@ -191,9 +191,9 @@
     .user-card {
       display: flex;
       align-items: center;
-      gap: 13px;
-      min-height: 72px;
-      padding: 11px 12px;
+      gap: 8px;
+      min-height: 58px;
+      padding: 8px 8px;
       background: var(--panel);
       border: 0;
       border-radius: 18px;
@@ -207,8 +207,8 @@
     }
 
     .avatar {
-      width: 50px;
-      height: 50px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       object-fit: cover;
       background: #292929;
@@ -218,16 +218,16 @@
     .default-avatar {
       display: grid;
       place-items: center;
-      width: 50px;
-      height: 50px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: transparent;
       flex: 0 0 auto;
     }
 
     .default-avatar svg {
-      width: 50px;
-      height: 50px;
+      width: 100%;
+      height: 100%;
       display: block;
     }
 
@@ -235,7 +235,7 @@
       min-width: 0;
       flex: 1;
       color: var(--text);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 650;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -516,7 +516,7 @@
     }
 
     .back-button,
-    .call-top-button {
+    .chat-header-avatar-button {
       display: grid;
       place-items: center;
       width: 42px;
@@ -525,14 +525,30 @@
       color: var(--white);
     }
 
+    .chat-header-avatar-button {
+      overflow: hidden;
+    }
+
+    .chat-header-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #292929;
+    }
+
+    .chat-header-avatar-button .default-avatar {
+      width: 34px;
+      height: 34px;
+    }
+
     .back-button:active,
-    .call-top-button:active {
+    .chat-header-avatar-button:active {
       background: #1e1e1e;
       transform: scale(.94);
     }
 
-    .back-button svg,
-    .call-top-button svg {
+    .back-button svg {
       width: 24px;
       height: 24px;
       fill: none;
@@ -547,28 +563,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-    }
-
-    .chat-user-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: #292929;
-      flex: 0 0 auto;
-    }
-
-    .chat-user .default-avatar {
-      width: 36px;
-      height: 36px;
     }
 
     .chat-user-text {
       min-width: 0;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
+      align-items: center;
     }
 
     .chat-username {
@@ -593,11 +594,19 @@
     .messages {
       flex: 1;
       overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
       padding: 12px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
       display: flex;
       flex-direction: column;
       gap: 8px;
       overscroll-behavior: contain;
+    }
+
+    .messages::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
     }
 
     .message-row {
@@ -633,10 +642,11 @@
     }
 
     .bubble-text {
+      display: inline;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       font-size: 15px;
-      line-height: 1.32;
+      line-height: 1.38;
     }
 
     .bubble-media {
@@ -655,11 +665,12 @@
     }
 
     .meta {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: flex-end;
       gap: 4px;
-      margin-top: 4px;
+      margin-left: 7px;
+      transform: translateY(2px);
       color: rgba(255,255,255,.48);
       font-size: 11px;
       line-height: 1;
@@ -845,7 +856,13 @@
     </header>
 
     <section id="results" class="results"></section>
-    <div id="emptyState" class="empty">Найдите пользователя по юзернейму</div>
+
+    <section id="chatListSection">
+      <div id="chatListLabel" class="section-label hidden">Диалоги</div>
+      <div id="chatList" class="chat-list"></div>
+    </section>
+
+    <div id="emptyState" class="empty">Диалогов пока нет</div>
   </main>
 
   <section id="chatScreen" class="chat-screen">
@@ -858,17 +875,14 @@
         </button>
 
         <div class="chat-user">
-          <div id="chatAvatarSlot"></div>
           <div class="chat-user-text">
             <div id="chatUsername" class="chat-username"></div>
             <div id="chatStatus" class="chat-status"></div>
           </div>
         </div>
 
-        <button id="chatCallButton" class="call-top-button" type="button" aria-label="Позвонить">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7.4 4.5 9.6 8a1.5 1.5 0 0 1-.2 1.8L8.2 11a15.5 15.5 0 0 0 4.8 4.8l1.2-1.2a1.5 1.5 0 0 1 1.8-.2l3.5 2.2a1.5 1.5 0 0 1 .7 1.5v1.4a1.5 1.5 0 0 1-1.5 1.5C10 21 3 14 3 5.3a1.5 1.5 0 0 1 1.5-1.5h1.4a1.5 1.5 0 0 1 1.5.7Z"></path>
-          </svg>
+        <button id="chatHeaderAvatarButton" class="chat-header-avatar-button" type="button" aria-label="Профиль пользователя">
+          <div id="chatHeaderAvatarSlot"></div>
         </button>
       </header>
 
@@ -996,6 +1010,7 @@
     let activeChatUnsubscribe = null;
     let activeMessagesUnsubscribe = null;
     let activePeerUnsubscribe = null;
+    let chatListUnsubscribe = null;
     let presenceTimer = null;
     let typingTimer = null;
     let typingStopTimer = null;
@@ -1332,6 +1347,135 @@
 
       clearInterval(presenceTimer);
       presenceTimer = setInterval(heartbeat, 30000);
+
+      listenChatList();
+    }
+
+    function formatListTime(dateLike) {
+      const date = dateLike?.toDate?.();
+
+      if (!date) return "";
+
+      const now = new Date();
+      const sameDay =
+        now.getFullYear() === date.getFullYear() &&
+        now.getMonth() === date.getMonth() &&
+        now.getDate() === date.getDate();
+
+      if (sameDay) {
+        return date.toLocaleTimeString("ru-RU", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      return date.toLocaleDateString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit"
+      });
+    }
+
+    function peerFromChat(chatData) {
+      const peerUid = (chatData.members || []).find(
+        (uid) => uid !== currentUser.uid
+      );
+
+      if (!peerUid) return null;
+
+      return {
+        uid: peerUid,
+        username:
+          chatData.usernames?.[peerUid] ||
+          "Пользователь",
+        avatar:
+          chatData.avatars?.[peerUid] ||
+          ""
+      };
+    }
+
+    function renderChatList(chats) {
+      const list = $("chatList");
+      const label = $("chatListLabel");
+      const empty = $("emptyState");
+
+      list.innerHTML = "";
+
+      const visibleChats = chats
+        .filter((chat) => chat.lastMessage)
+        .sort((a, b) => {
+          const aTime = a.updatedAt?.toMillis?.() || 0;
+          const bTime = b.updatedAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
+
+      label.classList.toggle(
+        "hidden",
+        visibleChats.length === 0
+      );
+
+      if (
+        !$("searchInput").value.trim()
+      ) {
+        empty.textContent =
+          visibleChats.length === 0
+            ? "Диалогов пока нет"
+            : "";
+
+        empty.classList.toggle(
+          "hidden",
+          visibleChats.length > 0
+        );
+      }
+
+      for (const chat of visibleChats) {
+        const peer = peerFromChat(chat);
+
+        if (!peer) continue;
+
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "chat-list-item";
+
+        item.innerHTML = `
+          ${avatarHtml(peer, "chat-list-avatar", 40)}
+          <div class="chat-list-text">
+            <div class="chat-list-name">${escapeHtml(peer.username)}</div>
+            <div class="chat-list-preview">${escapeHtml(chat.lastMessage || "")}</div>
+          </div>
+          <div class="chat-list-time">${formatListTime(chat.updatedAt)}</div>
+        `;
+
+        item.addEventListener("click", () => {
+          playClick();
+          openChat(peer, chat.id);
+        });
+
+        list.appendChild(item);
+      }
+    }
+
+    function listenChatList() {
+      chatListUnsubscribe?.();
+
+      const chatsQuery = query(
+        collection(db, "chats"),
+        where(`memberMap.${currentUser.uid}`, "==", true)
+      );
+
+      chatListUnsubscribe = onSnapshot(
+        chatsQuery,
+        (snapshot) => {
+          renderChatList(
+            snapshot.docs.map((chatDoc) => ({
+              id: chatDoc.id,
+              ...chatDoc.data()
+            }))
+          );
+        },
+        (error) => {
+          console.warn("Не удалось загрузить список чатов:", error);
+        }
+      );
     }
 
     function renderFoundUser(profile) {
@@ -1351,8 +1495,8 @@
       card.type = "button";
       card.className = "user-card";
       card.innerHTML = `
-        ${avatarHtml(profile)}
-        <div class="user-card-name">${profile.username}</div>
+        ${avatarHtml(profile, "avatar", 40)}
+        <div class="user-card-name">${escapeHtml(profile.username)}</div>
       `;
 
       card.addEventListener("click", () => {
@@ -1369,10 +1513,19 @@
       if (!username) {
         foundProfile = null;
         $("results").innerHTML = "";
-        $("emptyState").textContent = "Найдите пользователя по юзернейму";
-        $("emptyState").classList.remove("hidden");
+        $("chatListSection").classList.remove("hidden");
+
+        if (!$("chatList").children.length) {
+          $("emptyState").textContent = "Диалогов пока нет";
+          $("emptyState").classList.remove("hidden");
+        } else {
+          $("emptyState").classList.add("hidden");
+        }
+
         return;
       }
+
+      $("chatListSection").classList.add("hidden");
 
       const usernameSnapshot = await getDoc(doc(db, "usernames", username.toLowerCase()));
 
@@ -1425,33 +1578,67 @@
       return chatId;
     }
 
-    async function openChat(peer) {
+    async function openChat(peer, knownChatId = null) {
       activePeer = peer;
-      activeChatId = await ensureChat(peer);
+      activeChatId =
+        knownChatId ||
+        chatIdFor(currentUser.uid, peer.uid);
 
       $("chatScreen").classList.add("visible");
       document.body.style.overflow = "hidden";
 
-      renderAvatarSlot($("chatAvatarSlot"), peer, 36, "chat-user-avatar");
+      $("messages").innerHTML = "";
       $("chatUsername").textContent = peer.username;
+      renderAvatarSlot(
+        $("chatHeaderAvatarSlot"),
+        peer,
+        34,
+        "chat-header-avatar"
+      );
       updateChatStatus(peer);
 
       activeChatUnsubscribe?.();
       activeMessagesUnsubscribe?.();
       activePeerUnsubscribe?.();
 
-      activePeerUnsubscribe = onSnapshot(doc(db, "users", peer.uid), (snapshot) => {
-        if (!snapshot.exists()) return;
+      activePeerUnsubscribe = onSnapshot(
+        doc(db, "users", peer.uid),
+        (snapshot) => {
+          if (!snapshot.exists()) return;
 
-        activePeer = snapshot.data();
-        renderAvatarSlot($("chatAvatarSlot"), activePeer, 36, "chat-user-avatar");
-        updateChatStatus(activePeer);
-      });
+          activePeer = snapshot.data();
 
-      activeChatUnsubscribe = onSnapshot(doc(db, "chats", activeChatId), (snapshot) => {
-        if (!snapshot.exists()) return;
-        updateTypingStatus(snapshot.data());
-      });
+          renderAvatarSlot(
+            $("chatHeaderAvatarSlot"),
+            activePeer,
+            34,
+            "chat-header-avatar"
+          );
+
+          $("chatUsername").textContent =
+            activePeer.username;
+
+          updateChatStatus(activePeer);
+        }
+      );
+
+      try {
+        await ensureChat(peer);
+      } catch (error) {
+        console.warn("Не удалось подготовить чат:", error);
+      }
+
+      if (!activePeer || activePeer.uid !== peer.uid) {
+        return;
+      }
+
+      activeChatUnsubscribe = onSnapshot(
+        doc(db, "chats", activeChatId),
+        (snapshot) => {
+          if (!snapshot.exists()) return;
+          updateTypingStatus(snapshot.data());
+        }
+      );
 
       const messagesQuery = query(
         collection(db, "chats", activeChatId, "messages"),
@@ -1459,14 +1646,19 @@
         limit(200)
       );
 
-      activeMessagesUnsubscribe = onSnapshot(messagesQuery, async (snapshot) => {
-        renderMessages(snapshot.docs.map((messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data()
-        })));
+      activeMessagesUnsubscribe = onSnapshot(
+        messagesQuery,
+        async (snapshot) => {
+          renderMessages(
+            snapshot.docs.map((messageDoc) => ({
+              id: messageDoc.id,
+              ...messageDoc.data()
+            }))
+          );
 
-        await markMessagesRead(snapshot.docs);
-      });
+          await markMessagesRead(snapshot.docs);
+        }
+      );
     }
 
     function closeChat() {
@@ -1483,6 +1675,11 @@
 
       $("chatScreen").classList.remove("visible");
       document.body.style.overflow = "";
+
+      if (!$("searchInput").value.trim()) {
+        $("chatListSection").classList.remove("hidden");
+      }
+
       playCloseSound();
     }
 
@@ -1538,8 +1735,7 @@
         row.innerHTML = `
           <div class="bubble">
             ${media}
-            ${text}
-            <div class="meta">
+            ${text}<div class="meta">
               <span>${formatTime(message.createdAt)}</span>
               ${checks}
             </div>
@@ -1704,6 +1900,8 @@
       if (!user) {
         $("authScreen").classList.remove("hidden");
         clearInterval(presenceTimer);
+        chatListUnsubscribe?.();
+        chatListUnsubscribe = null;
         closeChat();
         return;
       }
@@ -1775,9 +1973,8 @@
 
     $("backButton").addEventListener("click", closeChat);
 
-    $("chatCallButton").addEventListener("click", () => {
+    $("chatHeaderAvatarButton").addEventListener("click", () => {
       playClick();
-      alert("Звонки лучше подключить через Jitsi или TURN. Переписка уже работает через Firebase.");
     });
 
     $("messageInput").addEventListener("input", () => {
