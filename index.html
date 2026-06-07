@@ -822,6 +822,9 @@
       let ringbackTimer = null;
       let activeRingbackNodes = [];
 
+      let incomingRingtoneTimer = null;
+      let activeIncomingRingtoneNodes = [];
+
       function getAudioContext() {
         if (!audioContext) {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -838,7 +841,7 @@
         frequency = 440,
         endFrequency = null,
         duration = 0.08,
-        volume = 0.025,
+        volume = 0.04,
         type = "sine",
         delay = 0,
       } = {}) {
@@ -863,40 +866,40 @@
       }
 
       function playSoftClick() {
-        playTone({ frequency: 520, endFrequency: 430, duration: 0.055, volume: 0.015 });
+        playTone({ frequency: 520, endFrequency: 430, duration: 0.055, volume: 0.028 });
       }
 
       function playOpenSound() {
-        playTone({ frequency: 430, endFrequency: 570, duration: 0.09, volume: 0.018 });
-        playTone({ frequency: 650, endFrequency: 790, duration: 0.09, volume: 0.012, delay: 0.045 });
+        playTone({ frequency: 430, endFrequency: 570, duration: 0.09, volume: 0.032 });
+        playTone({ frequency: 650, endFrequency: 790, duration: 0.09, volume: 0.022, delay: 0.045 });
       }
 
       function playCloseSound() {
-        playTone({ frequency: 560, endFrequency: 390, duration: 0.1, volume: 0.018 });
+        playTone({ frequency: 560, endFrequency: 390, duration: 0.1, volume: 0.032 });
       }
 
       function playToggleSound(enabled) {
         if (enabled) {
-          playTone({ frequency: 470, endFrequency: 660, duration: 0.085, volume: 0.02 });
-          playTone({ frequency: 700, endFrequency: 840, duration: 0.075, volume: 0.012, delay: 0.045 });
+          playTone({ frequency: 470, endFrequency: 660, duration: 0.085, volume: 0.036 });
+          playTone({ frequency: 700, endFrequency: 840, duration: 0.075, volume: 0.022, delay: 0.045 });
         } else {
-          playTone({ frequency: 620, endFrequency: 410, duration: 0.11, volume: 0.019 });
+          playTone({ frequency: 620, endFrequency: 410, duration: 0.11, volume: 0.034 });
         }
       }
 
       function playSelectionSound() {
-        playTone({ frequency: 620, endFrequency: 750, duration: 0.065, volume: 0.018 });
-        playTone({ frequency: 820, endFrequency: 930, duration: 0.06, volume: 0.01, delay: 0.035 });
+        playTone({ frequency: 620, endFrequency: 750, duration: 0.065, volume: 0.032 });
+        playTone({ frequency: 820, endFrequency: 930, duration: 0.06, volume: 0.019, delay: 0.035 });
       }
 
       function playConnectionSound() {
-        playTone({ frequency: 520, endFrequency: 650, duration: 0.11, volume: 0.021 });
-        playTone({ frequency: 710, endFrequency: 860, duration: 0.13, volume: 0.017, delay: 0.08 });
+        playTone({ frequency: 520, endFrequency: 650, duration: 0.11, volume: 0.038 });
+        playTone({ frequency: 710, endFrequency: 860, duration: 0.13, volume: 0.03, delay: 0.08 });
       }
 
       function playEndCallSound() {
-        playTone({ frequency: 520, endFrequency: 310, duration: 0.16, volume: 0.024 });
-        playTone({ frequency: 390, endFrequency: 250, duration: 0.14, volume: 0.015, delay: 0.1 });
+        playTone({ frequency: 520, endFrequency: 310, duration: 0.16, volume: 0.042 });
+        playTone({ frequency: 390, endFrequency: 250, duration: 0.14, volume: 0.027, delay: 0.1 });
       }
 
       function stopActiveRingbackNodes() {
@@ -929,8 +932,8 @@
         firstGain.gain.setValueAtTime(0.68, startTime);
         secondGain.gain.setValueAtTime(0.32, startTime);
         master.gain.setValueAtTime(0.0001, startTime);
-        master.gain.exponentialRampToValueAtTime(0.03, startTime + 0.08);
-        master.gain.setValueAtTime(0.03, endTime - 0.12);
+        master.gain.exponentialRampToValueAtTime(0.052, startTime + 0.08);
+        master.gain.setValueAtTime(0.052, endTime - 0.12);
         master.gain.exponentialRampToValueAtTime(0.0001, endTime);
         first.connect(firstGain);
         second.connect(secondGain);
@@ -961,6 +964,134 @@
           ringbackTimer = null;
         }
         stopActiveRingbackNodes();
+      }
+
+      function stopActiveIncomingRingtoneNodes() {
+        activeIncomingRingtoneNodes.forEach((node) => {
+          try { node.stop(); } catch (_) {}
+          try { node.disconnect(); } catch (_) {}
+        });
+
+        activeIncomingRingtoneNodes = [];
+      }
+
+      function playIncomingRingtonePulse() {
+        const context = getAudioContext();
+
+        if (!context) return;
+
+        stopActiveIncomingRingtoneNodes();
+
+        const startTime = context.currentTime;
+        const duration = 1.35;
+        const master = context.createGain();
+        const filter = context.createBiquadFilter();
+
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(1800, startTime);
+        filter.Q.setValueAtTime(0.5, startTime);
+
+        master.gain.setValueAtTime(0.0001, startTime);
+        master.gain.exponentialRampToValueAtTime(0.065, startTime + 0.05);
+        master.gain.setValueAtTime(0.065, startTime + 0.48);
+        master.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.64);
+        master.gain.setValueAtTime(0.0001, startTime + 0.72);
+        master.gain.exponentialRampToValueAtTime(0.065, startTime + 0.79);
+        master.gain.setValueAtTime(0.065, startTime + 1.16);
+        master.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+        const frequencies = [660, 880, 990];
+        const gains = [0.52, 0.31, 0.17];
+
+        const oscillators = frequencies.map((frequency, index) => {
+          const oscillator = context.createOscillator();
+          const oscillatorGain = context.createGain();
+
+          oscillator.type = index === 0 ? "sine" : "triangle";
+          oscillator.frequency.setValueAtTime(frequency, startTime);
+          oscillatorGain.gain.setValueAtTime(gains[index], startTime);
+
+          oscillator.connect(oscillatorGain);
+          oscillatorGain.connect(filter);
+
+          oscillator.start(startTime);
+          oscillator.stop(startTime + duration);
+
+          return { oscillator, oscillatorGain };
+        });
+
+        filter.connect(master);
+        master.connect(context.destination);
+
+        activeIncomingRingtoneNodes = oscillators.map((item) => item.oscillator);
+
+        window.setTimeout(() => {
+          try {
+            oscillators.forEach(({ oscillator, oscillatorGain }) => {
+              oscillator.disconnect();
+              oscillatorGain.disconnect();
+            });
+
+            filter.disconnect();
+            master.disconnect();
+          } catch (_) {}
+
+          activeIncomingRingtoneNodes = [];
+        }, duration * 1000 + 150);
+      }
+
+      function startIncomingRingtone() {
+        stopIncomingRingtone();
+        playIncomingRingtonePulse();
+
+        incomingRingtoneTimer = window.setInterval(
+          playIncomingRingtonePulse,
+          2600
+        );
+      }
+
+      function stopIncomingRingtone() {
+        if (incomingRingtoneTimer !== null) {
+          window.clearInterval(incomingRingtoneTimer);
+          incomingRingtoneTimer = null;
+        }
+
+        stopActiveIncomingRingtoneNodes();
+      }
+
+      function waitForIceGatheringComplete(connection, timeout = 3000) {
+        if (!connection || connection.iceGatheringState === "complete") {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+          let resolved = false;
+
+          const finish = () => {
+            if (resolved) return;
+
+            resolved = true;
+            connection.removeEventListener(
+              "icegatheringstatechange",
+              handleStateChange
+            );
+            window.clearTimeout(timer);
+            resolve();
+          };
+
+          const handleStateChange = () => {
+            if (connection.iceGatheringState === "complete") {
+              finish();
+            }
+          };
+
+          const timer = window.setTimeout(finish, timeout);
+
+          connection.addEventListener(
+            "icegatheringstatechange",
+            handleStateChange
+          );
+        });
       }
 
       function fmt(s) {
@@ -1273,8 +1404,15 @@
               if (c.type === "added") addRemoteCandidate(c.doc.data());
             }),
           );
-          let off = await pc.createOffer();
+          let off = await pc.createOffer({
+            offerToReceiveAudio: true,
+          });
+
           await pc.setLocalDescription(off);
+          await waitForIceGatheringComplete(pc, 3200);
+
+          const completeOffer = pc.localDescription || off;
+
           await setDoc(callRef, {
             callerId: u.uid,
             calleeId: t.uid,
@@ -1284,17 +1422,25 @@
             calleeAvatar: t.avatar || "",
             status: "ringing",
             createdAt: serverTimestamp(),
-            offer: { type: off.type, sdp: off.sdp },
+            offer: { type: completeOffer.type, sdp: completeOffer.sdp },
           });
           callUn = onSnapshot(callRef, async (s) => {
             if (!s.exists()) return;
             let d = s.data();
+            if (d.status === "accepted") {
+              stopRingback();
+              $("callStatus").textContent = "Соединение…";
+            }
+
             if (d.answer && !pc.currentRemoteDescription) {
               await pc.setRemoteDescription(
                 new RTCSessionDescription(d.answer),
               );
+
               await flushRemoteCandidates();
+              $("callStatus").textContent = "Соединение…";
             }
+
             if (d.status === "rejected") {
               stopRingback();
               playEndCallSound();
@@ -1310,6 +1456,9 @@
       }
       async function answer() {
         if (!inc) return;
+
+        stopIncomingRingtone();
+
         try {
           close($("incomingOverlay"));
           callRef = doc(db, "calls", inc.id);
@@ -1333,9 +1482,17 @@
           await pc.setRemoteDescription(new RTCSessionDescription(d.offer));
           await flushRemoteCandidates();
           let an = await pc.createAnswer();
+
           await pc.setLocalDescription(an);
+          await waitForIceGatheringComplete(pc, 3200);
+
+          const completeAnswer = pc.localDescription || an;
+
           await updateDoc(callRef, {
-            answer: { type: an.type, sdp: an.sdp },
+            answer: {
+              type: completeAnswer.type,
+              sdp: completeAnswer.sdp,
+            },
             status: "accepted",
             answeredAt: serverTimestamp(),
           });
@@ -1355,6 +1512,9 @@
       }
       async function reject() {
         if (!inc) return;
+
+        stopIncomingRingtone();
+
         await updateDoc(doc(db, "calls", inc.id), {
           status: "rejected",
           endedAt: serverTimestamp(),
@@ -1373,6 +1533,7 @@
       }
       function cleanup() {
         stopRingback();
+        stopIncomingRingtone();
         stopDur();
         clearConnectionTimers();
         pendingRemoteCandidates = [];
@@ -1407,7 +1568,9 @@
           inc = { id: d.id, data: d.data() };
           $("incomingAvatar").src = d.data().callerAvatar || D;
           $("incomingUsername").textContent = `@${d.data().callerUsername}`;
+
           open($("incomingOverlay"));
+          startIncomingRingtone();
         });
       }
       let authBootstrapPromise = null;
