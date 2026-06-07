@@ -136,15 +136,26 @@
         background: #292929;
       }
       .contacts {
-        border-top: 1px solid var(--b);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 10px;
       }
       .contact {
         display: flex;
         align-items: center;
         gap: 12px;
         min-height: 72px;
-        padding: 9px 4px;
-        border-bottom: 1px solid var(--b);
+        padding: 10px 12px;
+        background: #181818;
+        border: 1px solid #303030;
+        border-radius: 17px;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.16s ease;
+      }
+      .contact:active {
+        background: #1d1d1d;
+        border-color: #3a3a3a;
+        transform: scale(0.99);
       }
       .avaw {
         position: relative;
@@ -409,13 +420,6 @@
         border-radius: 24px;
         background: #191919;
       }
-      .authcard h1 {
-        margin: 0 0 8px;
-      }
-      .authcard p {
-        margin: 0 0 20px;
-        color: var(--m);
-      }
       .callscreen {
         position: fixed;
         inset: 0;
@@ -571,8 +575,6 @@
   <body>
     <div id="authScreen" class="auth">
       <div class="authcard">
-        <h1>UniversalCaller</h1>
-        <p>Войди или создай аккаунт.</p>
         <input
           id="authEmail"
           class="field"
@@ -816,6 +818,151 @@
             document.body.style.overflow = "";
         },
         online = (d) => Date.now() - (d?.lastSeen?.toMillis?.() || 0) < 9e4;
+      let audioContext = null;
+      let ringbackTimer = null;
+      let activeRingbackNodes = [];
+
+      function getAudioContext() {
+        if (!audioContext) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return null;
+          audioContext = new AudioContextClass();
+        }
+        if (audioContext.state === "suspended") {
+          audioContext.resume().catch(() => {});
+        }
+        return audioContext;
+      }
+
+      function playTone({
+        frequency = 440,
+        endFrequency = null,
+        duration = 0.08,
+        volume = 0.025,
+        type = "sine",
+        delay = 0,
+      } = {}) {
+        const context = getAudioContext();
+        if (!context) return;
+        const startTime = context.currentTime + delay;
+        const endTime = startTime + duration;
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        if (endFrequency !== null) {
+          oscillator.frequency.exponentialRampToValueAtTime(Math.max(endFrequency, 1), endTime);
+        }
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.exponentialRampToValueAtTime(volume, startTime + Math.min(0.018, duration / 3));
+        gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(startTime);
+        oscillator.stop(endTime + 0.02);
+      }
+
+      function playSoftClick() {
+        playTone({ frequency: 520, endFrequency: 430, duration: 0.055, volume: 0.015 });
+      }
+
+      function playOpenSound() {
+        playTone({ frequency: 430, endFrequency: 570, duration: 0.09, volume: 0.018 });
+        playTone({ frequency: 650, endFrequency: 790, duration: 0.09, volume: 0.012, delay: 0.045 });
+      }
+
+      function playCloseSound() {
+        playTone({ frequency: 560, endFrequency: 390, duration: 0.1, volume: 0.018 });
+      }
+
+      function playToggleSound(enabled) {
+        if (enabled) {
+          playTone({ frequency: 470, endFrequency: 660, duration: 0.085, volume: 0.02 });
+          playTone({ frequency: 700, endFrequency: 840, duration: 0.075, volume: 0.012, delay: 0.045 });
+        } else {
+          playTone({ frequency: 620, endFrequency: 410, duration: 0.11, volume: 0.019 });
+        }
+      }
+
+      function playSelectionSound() {
+        playTone({ frequency: 620, endFrequency: 750, duration: 0.065, volume: 0.018 });
+        playTone({ frequency: 820, endFrequency: 930, duration: 0.06, volume: 0.01, delay: 0.035 });
+      }
+
+      function playConnectionSound() {
+        playTone({ frequency: 520, endFrequency: 650, duration: 0.11, volume: 0.021 });
+        playTone({ frequency: 710, endFrequency: 860, duration: 0.13, volume: 0.017, delay: 0.08 });
+      }
+
+      function playEndCallSound() {
+        playTone({ frequency: 520, endFrequency: 310, duration: 0.16, volume: 0.024 });
+        playTone({ frequency: 390, endFrequency: 250, duration: 0.14, volume: 0.015, delay: 0.1 });
+      }
+
+      function stopActiveRingbackNodes() {
+        activeRingbackNodes.forEach((node) => {
+          try { node.stop(); } catch (_) {}
+          try { node.disconnect(); } catch (_) {}
+        });
+        activeRingbackNodes = [];
+      }
+
+      function playRingbackPulse() {
+        const context = getAudioContext();
+        if (!context) return;
+        stopActiveRingbackNodes();
+        const startTime = context.currentTime;
+        const duration = 0.82;
+        const endTime = startTime + duration;
+        const master = context.createGain();
+        const filter = context.createBiquadFilter();
+        const first = context.createOscillator();
+        const second = context.createOscillator();
+        const firstGain = context.createGain();
+        const secondGain = context.createGain();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(1200, startTime);
+        first.type = "sine";
+        second.type = "sine";
+        first.frequency.setValueAtTime(425, startTime);
+        second.frequency.setValueAtTime(450, startTime);
+        firstGain.gain.setValueAtTime(0.68, startTime);
+        secondGain.gain.setValueAtTime(0.32, startTime);
+        master.gain.setValueAtTime(0.0001, startTime);
+        master.gain.exponentialRampToValueAtTime(0.03, startTime + 0.08);
+        master.gain.setValueAtTime(0.03, endTime - 0.12);
+        master.gain.exponentialRampToValueAtTime(0.0001, endTime);
+        first.connect(firstGain);
+        second.connect(secondGain);
+        firstGain.connect(filter);
+        secondGain.connect(filter);
+        filter.connect(master);
+        master.connect(context.destination);
+        first.start(startTime);
+        second.start(startTime);
+        first.stop(endTime);
+        second.stop(endTime);
+        activeRingbackNodes = [first, second];
+        setTimeout(() => {
+          try { first.disconnect(); second.disconnect(); firstGain.disconnect(); secondGain.disconnect(); filter.disconnect(); master.disconnect(); } catch (_) {}
+          activeRingbackNodes = [];
+        }, duration * 1000 + 120);
+      }
+
+      function startRingback() {
+        stopRingback();
+        playRingbackPulse();
+        ringbackTimer = setInterval(playRingbackPulse, 2850);
+      }
+
+      function stopRingback() {
+        if (ringbackTimer !== null) {
+          clearInterval(ringbackTimer);
+          ringbackTimer = null;
+        }
+        stopActiveRingbackNodes();
+      }
+
       function fmt(s) {
         let h = Math.floor(s / 3600),
           m = Math.floor((s % 3600) / 60),
@@ -949,7 +1096,10 @@
         let a = document.createElement("article");
         a.className = "contact";
         a.innerHTML = `<div class="avaw"><img class="ava" src="${x.avatar || D}"><span class="presence ${online(x) ? "on" : ""}"></span></div><div class="ci"><h3>@${x.username}</h3><p>${online(x) ? "В сети" : "Не в сети"}</p></div><button class="call"><svg viewBox="0 0 24 24"><path d="M7.4 4.5 9.6 8a1.5 1.5 0 0 1-.2 1.8L8.2 11a15.5 15.5 0 0 0 4.8 4.8l1.2-1.2a1.5 1.5 0 0 1 1.8-.2l3.5 2.2a1.5 1.5 0 0 1 .7 1.5v1.4a1.5 1.5 0 0 1-1.5 1.5C10 21 3 14 3 5.3a1.5 1.5 0 0 1 1.5-1.5h1.4a1.5 1.5 0 0 1 1.5.7Z"></path></svg></button>`;
-        a.querySelector(".call").onclick = () => outCall(x);
+        a.querySelector(".call").onclick = () => {
+          playSoftClick();
+          outCall(x);
+        };
         l.appendChild(a);
       }
       async function search() {
@@ -1046,6 +1196,8 @@
 
           if (state === "connected" || state === "completed") {
             clearConnectionTimers();
+            stopRingback();
+            if (startAt === null) playConnectionSound();
             startDur();
             return;
           }
@@ -1078,6 +1230,8 @@
 
           if (state === "connected") {
             clearConnectionTimers();
+            stopRingback();
+            if (startAt === null) playConnectionSound();
             startDur();
           } else if (state === "connecting" || state === "new") {
             $("callStatus").textContent = "Соединение…";
@@ -1104,6 +1258,7 @@
         try {
           if (callRef) return;
           showCall(t, "Вызов…");
+          startRingback();
           pendingRemoteCandidates = [];
           let st = await mic();
           pc = newPC();
@@ -1141,6 +1296,8 @@
               await flushRemoteCandidates();
             }
             if (d.status === "rejected") {
+              stopRingback();
+              playEndCallSound();
               $("callStatus").textContent = "Вызов отклонён";
               setTimeout(cleanup, 700);
             }
@@ -1206,6 +1363,7 @@
         close($("incomingOverlay"));
       }
       async function hang() {
+        playEndCallSound();
         if (callRef)
           await updateDoc(callRef, {
             status: "ended",
@@ -1214,6 +1372,7 @@
         cleanup();
       }
       function cleanup() {
+        stopRingback();
         stopDur();
         clearConnectionTimers();
         pendingRemoteCandidates = [];
@@ -1435,18 +1594,20 @@
         clearTimeout(td);
         td = setTimeout(search, 350);
       };
-      $("loginBtn").onclick = login;
-      $("registerBtn").onclick = reg;
+      $("loginBtn").onclick = () => { playSoftClick(); login(); };
+      $("registerBtn").onclick = () => { playSoftClick(); reg(); };
       $("profileBtn").onclick = () => {
+        playOpenSound();
         pa = p?.avatar || "";
         myUI();
         hint($("profileHint"), "");
         open($("profileOverlay"));
       };
-      $("profileClose").onclick = () => close($("profileOverlay"));
+      $("profileClose").onclick = () => { playCloseSound(); close($("profileOverlay")); };
       $("profileSave").onclick = async () => {
         try {
           await saveProfile($("profileUsername").value, pa);
+          playSelectionSound();
           close($("profileOverlay"));
         } catch (e) {
           hint($("profileHint"), e.message, true);
@@ -1468,11 +1629,12 @@
         };
         r.readAsDataURL(f);
       };
-      $("settingsBtn").onclick = () => open($("settingsOverlay"));
-      $("settingsClose").onclick = () => close($("settingsOverlay"));
+      $("settingsBtn").onclick = () => { playOpenSound(); open($("settingsOverlay")); };
+      $("settingsClose").onclick = () => { playCloseSound(); close($("settingsOverlay")); };
       $("encryptionSwitch").onclick = () => {
         enc = !enc;
         localStorage.setItem("encryptionEnabled", String(enc));
+        playToggleSound(enc);
         settingsUI();
       };
       document.querySelectorAll(".mode").forEach(
@@ -1480,20 +1642,23 @@
           (b.onclick = () => {
             mode = b.dataset.mode;
             localStorage.setItem("displayMode", mode);
+            playSelectionSound();
             settingsUI();
           }),
       );
-      $("answerBtn").onclick = answer;
-      $("rejectBtn").onclick = reject;
+      $("answerBtn").onclick = () => { playSoftClick(); answer(); };
+      $("rejectBtn").onclick = () => { playEndCallSound(); reject(); };
       $("hangupBtn").onclick = hang;
       $("micBtn").onclick = () => {
         muted = !muted;
         ls?.getAudioTracks().forEach((t) => (t.enabled = !muted));
         $("micBtn").classList.toggle("muted", muted);
+        playToggleSound(!muted);
       };
       $("speakerBtn").onclick = () => {
         speaker = !speaker;
         $("speakerBtn").classList.toggle("on", speaker);
+        playToggleSound(speaker);
         $("remoteAudio").volume = speaker ? 1 : 0.85;
         $("remoteAudio")
           .play()
@@ -1504,6 +1669,13 @@
           (o.onclick = (e) => {
             if (e.target === o && o !== $("incomingOverlay")) close(o);
           }),
+      );
+      document.addEventListener(
+        "pointerdown",
+        (event) => {
+          if (event.target.closest("button, label")) getAudioContext();
+        },
+        { passive: true },
       );
       settingsUI();
       render(null);
