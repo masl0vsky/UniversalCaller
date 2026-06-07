@@ -1,0 +1,3299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no"
+  >
+
+  <meta name="theme-color" content="#101010">
+
+  <title>Звонки</title>
+
+  <style>
+    :root {
+        --background: #101010;
+        --surface: #191919;
+        --surface-hover: #232323;
+        --border: #292929;
+
+        --text-primary: #f2f2f2;
+        --text-secondary: #929292;
+        --text-muted: #777777;
+
+        --online: #bdbdbd;
+        --error: #d98b8b;
+
+        --call-control: #292929;
+        --call-control-active: #ededed;
+        --call-control-active-text: #111111;
+
+        --hangup: #e53935;
+        --hangup-hover: #ef4844;
+    }
+
+    * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        background: var(--background);
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    body {
+        min-height: 100vh;
+        min-height: 100dvh;
+
+        overflow-x: hidden;
+
+        color: var(--text-primary);
+
+        font-family:
+            Inter,
+            -apple-system,
+            BlinkMacSystemFont,
+            "SF Pro Display",
+            "SF Pro Text",
+            "Segoe UI",
+            Roboto,
+            Arial,
+            sans-serif;
+    }
+
+    button,
+    input {
+        font: inherit;
+    }
+
+    button {
+        padding: 0;
+        border: none;
+        outline: none;
+        cursor: pointer;
+    }
+
+    img {
+        -webkit-user-drag: none;
+        user-select: none;
+    }
+
+    .app {
+        width: 100%;
+        max-width: 540px;
+
+        min-height: 100vh;
+        min-height: 100dvh;
+
+        margin: 0 auto;
+
+        padding:
+            max(10px, env(safe-area-inset-top))
+            max(12px, env(safe-area-inset-right))
+            calc(24px + env(safe-area-inset-bottom))
+            max(12px, env(safe-area-inset-left));
+    }
+
+    /* Верхняя панель */
+
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        width: 100%;
+        padding-bottom: 16px;
+
+        background: rgba(16, 16, 16, 0.96);
+
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    /* Поиск */
+
+    .search {
+        position: relative;
+
+        width: 186px;
+        min-width: 186px;
+        max-width: 186px;
+
+        flex: 0 0 186px;
+    }
+
+    .search-icon {
+        position: absolute;
+        top: 50%;
+        left: 14px;
+
+        width: 18px;
+        height: 18px;
+
+        color: #8b8b8b;
+
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    .search-icon circle,
+    .search-icon path {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .search-input {
+        display: block;
+
+        width: 186px;
+        height: 44px;
+
+        padding: 0 14px 0 41px;
+
+        color: var(--text-primary);
+        background: var(--surface);
+
+        border: 1px solid transparent;
+        border-radius: 14px;
+
+        outline: none;
+
+        font-size: 14px;
+
+        transition:
+            background 0.18s ease,
+            border-color 0.18s ease;
+    }
+
+    .search-input::placeholder {
+        color: var(--text-muted);
+        opacity: 1;
+    }
+
+    .search-input:focus {
+        background: #1c1c1c;
+        border-color: #343434;
+    }
+
+    .search-input:not(:placeholder-shown) {
+        padding-right: 37px;
+    }
+
+    .clear-search {
+        position: absolute;
+        top: 50%;
+        right: 7px;
+
+        display: none;
+        place-items: center;
+
+        width: 28px;
+        height: 28px;
+
+        color: #888888;
+        background: transparent;
+
+        border-radius: 50%;
+
+        transform: translateY(-50%);
+    }
+
+    .clear-search.visible {
+        display: grid;
+    }
+
+    .clear-search:hover {
+        background: #292929;
+    }
+
+    .clear-search svg {
+        width: 16px;
+        height: 16px;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+    }
+
+    /* Верхние кнопки */
+
+    .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 0;
+
+        flex-shrink: 0;
+    }
+
+    .top-button {
+        display: grid;
+        place-items: center;
+
+        width: 38px;
+        height: 42px;
+
+        color: #eeeeee;
+        background: transparent;
+
+        border-radius: 50%;
+
+        transition:
+            color 0.18s ease,
+            background 0.18s ease,
+            transform 0.18s ease;
+    }
+
+    .top-button:hover {
+        color: #ffffff;
+        background: #1d1d1d;
+    }
+
+    .top-button:active {
+        transform: scale(0.92);
+    }
+
+    .settings-button {
+        margin-right: -1px;
+    }
+
+    .settings-icon {
+        display: block;
+
+        width: 24px;
+        height: 24px;
+
+        overflow: visible;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.35;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .settings-icon .gear-center {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.4;
+    }
+
+    .profile-icon {
+        display: block;
+
+        width: 24px;
+        height: 24px;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* Контакты */
+
+    .contacts {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .contact {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+
+        min-height: 72px;
+        padding: 9px 4px;
+
+        border-bottom: 1px solid var(--border);
+
+        transition:
+            background 0.16s ease,
+            transform 0.16s ease;
+    }
+
+    .contact:first-child {
+        border-top: 1px solid var(--border);
+    }
+
+    .contact:active {
+        background: rgba(255, 255, 255, 0.025);
+        transform: scale(0.99);
+    }
+
+    .avatar-wrapper {
+        position: relative;
+
+        width: 50px;
+        height: 50px;
+
+        flex-shrink: 0;
+    }
+
+    .avatar {
+        display: block;
+
+        width: 50px;
+        height: 50px;
+
+        object-fit: cover;
+
+        background: #292929;
+        border-radius: 50%;
+
+        filter: saturate(0.55) contrast(1.03);
+    }
+
+    .status-dot {
+        position: absolute;
+        right: 0;
+        bottom: 1px;
+
+        width: 11px;
+        height: 11px;
+
+        background: var(--online);
+
+        border: 2px solid var(--background);
+        border-radius: 50%;
+    }
+
+    .contact-info {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .contact-name {
+        margin: 0 0 5px;
+
+        overflow: hidden;
+
+        color: var(--text-primary);
+
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.15;
+
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .contact-status {
+        margin: 0;
+
+        overflow: hidden;
+
+        color: var(--text-secondary);
+
+        font-size: 13px;
+        line-height: 1.2;
+
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .call-button {
+        display: grid;
+        place-items: center;
+
+        width: 42px;
+        height: 42px;
+
+        flex-shrink: 0;
+
+        color: #d7d7d7;
+        background: transparent;
+
+        border-radius: 50%;
+
+        transition:
+            background 0.18s ease,
+            transform 0.18s ease;
+    }
+
+    .call-button:hover {
+        background: var(--surface-hover);
+    }
+
+    .call-button:active {
+        transform: scale(0.9);
+    }
+
+    .call-button svg {
+        width: 21px;
+        height: 21px;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* Пустой результат */
+
+    .empty {
+        display: none;
+
+        min-height: 320px;
+
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+
+        padding: 40px 20px;
+
+        text-align: center;
+    }
+
+    .empty.visible {
+        display: flex;
+    }
+
+    .empty-title {
+        margin: 0 0 7px;
+
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .empty-text {
+        margin: 0;
+
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    /* Модальные окна */
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+
+        padding:
+            16px
+            max(16px, env(safe-area-inset-right))
+            calc(16px + env(safe-area-inset-bottom))
+            max(16px, env(safe-area-inset-left));
+
+        visibility: hidden;
+        opacity: 0;
+
+        background: rgba(0, 0, 0, 0.66);
+
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+
+        transition:
+            opacity 0.2s ease,
+            visibility 0.2s ease;
+    }
+
+    .modal-overlay.visible {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .modal {
+        width: 100%;
+        max-width: 508px;
+
+        max-height: calc(100dvh - 32px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+
+        padding: 10px 18px 22px;
+
+        background: #1a1a1a;
+
+        border: 1px solid #303030;
+        border-radius: 24px;
+
+        transform: translateY(24px);
+
+        transition: transform 0.22s ease;
+    }
+
+    .modal-overlay.visible .modal {
+        transform: translateY(0);
+    }
+
+    .modal-handle {
+        width: 38px;
+        height: 4px;
+
+        margin: 0 auto 22px;
+
+        background: #555555;
+        border-radius: 999px;
+    }
+
+    .modal-profile {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+
+        padding: 4px 0 20px;
+
+        text-align: center;
+    }
+
+    .modal-avatar {
+        width: 82px;
+        height: 82px;
+
+        margin-bottom: 14px;
+
+        object-fit: cover;
+
+        background: #292929;
+        border-radius: 50%;
+
+        filter: saturate(0.55);
+    }
+
+    .modal-name {
+        margin: 0 0 6px;
+
+        font-size: 20px;
+        font-weight: 650;
+    }
+
+    .modal-status {
+        margin: 0;
+
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .modal-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .modal-button {
+        min-height: 50px;
+
+        padding: 0 16px;
+
+        color: var(--text-primary);
+        background: #242424;
+
+        border-radius: 14px;
+
+        font-size: 14px;
+        font-weight: 600;
+
+        transition:
+            background 0.18s ease,
+            transform 0.18s ease;
+    }
+
+    .modal-button:hover {
+        background: #2c2c2c;
+    }
+
+    .modal-button:active {
+        transform: scale(0.97);
+    }
+
+    .modal-button.primary {
+        color: #151515;
+        background: #ededed;
+    }
+
+    .modal-button.primary:disabled {
+        color: #737373;
+        background: #313131;
+        cursor: not-allowed;
+    }
+
+    /* Профиль */
+
+    .profile-avatar-editor {
+        position: relative;
+
+        width: 94px;
+        height: 94px;
+
+        margin-bottom: 24px;
+    }
+
+    .profile-avatar-image,
+    .profile-avatar-placeholder {
+        width: 94px;
+        height: 94px;
+
+        border-radius: 50%;
+    }
+
+    .profile-avatar-image {
+        display: none;
+
+        object-fit: cover;
+        background: #252525;
+    }
+
+    .profile-avatar-image.visible {
+        display: block;
+    }
+
+    .profile-avatar-placeholder {
+        display: grid;
+        place-items: center;
+
+        color: #dddddd;
+        background: #252525;
+    }
+
+    .profile-avatar-placeholder.hidden {
+        display: none;
+    }
+
+    .profile-avatar-placeholder svg {
+        width: 43px;
+        height: 43px;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.45;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .avatar-change-button {
+        position: absolute;
+        right: -2px;
+        bottom: -2px;
+
+        display: grid;
+        place-items: center;
+
+        width: 32px;
+        height: 32px;
+
+        color: #111111;
+        background: #ededed;
+
+        border: 3px solid #1a1a1a;
+        border-radius: 50%;
+
+        cursor: pointer;
+
+        transition:
+            transform 0.18s ease,
+            background 0.18s ease;
+    }
+
+    .avatar-change-button:hover {
+        background: #d8d8d8;
+    }
+
+    .avatar-change-button:active {
+        transform: scale(0.92);
+    }
+
+    .avatar-change-button svg {
+        width: 16px;
+        height: 16px;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .avatar-file-input {
+        display: none;
+    }
+
+    .profile-form {
+        width: 100%;
+    }
+
+    .username-field {
+        position: relative;
+        width: 100%;
+    }
+
+    .username-prefix {
+        position: absolute;
+        top: 50%;
+        left: 15px;
+
+        color: #cfcfcf;
+        font-size: 15px;
+
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    .username-input {
+        width: 100%;
+        height: 48px;
+
+        padding: 0 54px 0 31px;
+
+        color: var(--text-primary);
+        background: #222222;
+
+        border: 1px solid #333333;
+        border-radius: 14px;
+
+        outline: none;
+
+        font-size: 15px;
+
+        transition:
+            border-color 0.18s ease,
+            background 0.18s ease;
+    }
+
+    .username-input::placeholder {
+        color: #6f6f6f;
+    }
+
+    .username-input:focus {
+        background: #242424;
+        border-color: #555555;
+    }
+
+    .username-input.invalid {
+        border-color: var(--error);
+    }
+
+    .username-counter {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+
+        color: #6f6f6f;
+
+        font-size: 12px;
+
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    .username-error {
+        display: none;
+
+        min-height: 17px;
+
+        margin: 7px 0 0;
+
+        color: var(--error);
+
+        font-size: 12px;
+        line-height: 1.4;
+        text-align: left;
+    }
+
+    .username-error.visible {
+        display: block;
+    }
+
+    .profile-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+
+        margin-top: 18px;
+    }
+
+    /* Настройки */
+
+    .settings-title {
+        margin: 0 0 18px;
+
+        font-size: 20px;
+        font-weight: 650;
+    }
+
+    .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+
+        min-height: 58px;
+
+        border-bottom: 1px solid var(--border);
+    }
+
+    .setting-name {
+        font-size: 15px;
+    }
+
+    .switch {
+        position: relative;
+
+        width: 44px;
+        height: 26px;
+
+        flex-shrink: 0;
+
+        background: #363636;
+        border-radius: 999px;
+
+        transition: background 0.2s ease;
+    }
+
+    .switch::after {
+        content: "";
+
+        position: absolute;
+        top: 3px;
+        left: 3px;
+
+        width: 20px;
+        height: 20px;
+
+        background: #bfbfbf;
+        border-radius: 50%;
+
+        transition:
+            left 0.2s ease,
+            background 0.2s ease;
+    }
+
+    .switch.active {
+        background: #e6e6e6;
+    }
+
+    .switch.active::after {
+        left: 21px;
+        background: #181818;
+    }
+
+    .encryption-options {
+        max-height: 0;
+        overflow: hidden;
+
+        visibility: hidden;
+        opacity: 0;
+
+        transform: translateY(-6px);
+
+        transition:
+            max-height 0.28s ease,
+            opacity 0.22s ease,
+            transform 0.22s ease,
+            visibility 0.22s ease;
+    }
+
+    .encryption-options.visible {
+        max-height: 130px;
+
+        visibility: visible;
+        opacity: 1;
+
+        transform: translateY(0);
+    }
+
+    .display-setting {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+
+        min-height: 68px;
+
+        border-bottom: 1px solid var(--border);
+    }
+
+    .display-options {
+        display: flex;
+        align-items: center;
+
+        padding: 3px;
+
+        background: #242424;
+        border-radius: 11px;
+    }
+
+    .display-option {
+        min-height: 34px;
+
+        padding: 0 11px;
+
+        color: var(--text-secondary);
+        background: transparent;
+
+        border-radius: 8px;
+
+        font-size: 12px;
+        white-space: nowrap;
+
+        transition:
+            color 0.18s ease,
+            background 0.18s ease,
+            transform 0.16s ease;
+    }
+
+    .display-option:active {
+        transform: scale(0.95);
+    }
+
+    .display-option.active {
+        color: #151515;
+        background: #ededed;
+    }
+
+    /* Экран звонка */
+
+    .call-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+
+        width: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+
+        visibility: hidden;
+        opacity: 0;
+
+        padding:
+            max(18px, env(safe-area-inset-top))
+            max(20px, env(safe-area-inset-right))
+            calc(30px + env(safe-area-inset-bottom))
+            max(20px, env(safe-area-inset-left));
+
+        background:
+            radial-gradient(
+                circle at 50% 28%,
+                rgba(255, 255, 255, 0.035),
+                transparent 34%
+            ),
+            #101010;
+
+        transition:
+            opacity 0.22s ease,
+            visibility 0.22s ease;
+    }
+
+    .call-screen.visible {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    /* Код или смайлики сверху */
+
+    .call-verification {
+        position: absolute;
+        top: max(18px, env(safe-area-inset-top));
+        left: 50%;
+
+        display: none;
+        align-items: center;
+        justify-content: center;
+
+        min-height: 42px;
+        max-width: calc(100% - 40px);
+
+        padding: 7px 14px;
+
+        color: #eeeeee;
+        background: rgba(34, 34, 34, 0.82);
+
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 14px;
+
+        box-shadow:
+            0 8px 28px rgba(0, 0, 0, 0.22);
+
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+
+        transform: translateX(-50%);
+
+        user-select: none;
+        white-space: nowrap;
+    }
+
+    .call-verification.visible {
+        display: flex;
+    }
+
+    .call-verification.emoji-mode {
+        gap: 5px;
+
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .call-verification.code-mode {
+        font-size: 17px;
+        font-weight: 650;
+        letter-spacing: 0.22em;
+
+        padding-left: 18px;
+    }
+
+    .verification-item {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        min-width: 24px;
+
+        animation: verificationAppear 0.28s ease both;
+    }
+
+    .verification-item:nth-child(2) {
+        animation-delay: 0.035s;
+    }
+
+    .verification-item:nth-child(3) {
+        animation-delay: 0.07s;
+    }
+
+    .verification-item:nth-child(4) {
+        animation-delay: 0.105s;
+    }
+
+    .verification-item:nth-child(5) {
+        animation-delay: 0.14s;
+    }
+
+    @keyframes verificationAppear {
+        from {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .call-contact {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+
+        width: 100%;
+        max-width: 420px;
+
+        margin-top: clamp(88px, 14vh, 145px);
+
+        text-align: center;
+    }
+
+    .call-avatar {
+        width: clamp(104px, 29vw, 128px);
+        height: clamp(104px, 29vw, 128px);
+
+        margin-bottom: 24px;
+
+        object-fit: cover;
+
+        background: #252525;
+        border-radius: 50%;
+
+        box-shadow:
+            0 18px 55px rgba(0, 0, 0, 0.32);
+
+        filter: saturate(0.58) contrast(1.02);
+    }
+
+    .call-name {
+        max-width: 100%;
+
+        margin: 0 0 10px;
+
+        overflow: hidden;
+
+        font-size: clamp(23px, 6.5vw, 28px);
+        font-weight: 600;
+
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .call-status {
+        min-height: 20px;
+        margin: 0;
+
+        color: var(--text-secondary);
+
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+    }
+
+    .call-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(14px, 4.5vw, 21px);
+
+        width: 100%;
+        max-width: 430px;
+
+        margin-top: auto;
+    }
+
+    .control-button {
+        position: relative;
+
+        display: grid;
+        place-items: center;
+
+        width: clamp(58px, 17vw, 66px);
+        height: clamp(58px, 17vw, 66px);
+
+        flex-shrink: 0;
+
+        color: var(--text-primary);
+        background: var(--call-control);
+
+        border-radius: 50%;
+
+        box-shadow:
+            0 10px 24px rgba(0, 0, 0, 0.22);
+
+        transition:
+            background 0.18s ease,
+            color 0.18s ease,
+            transform 0.18s ease;
+    }
+
+    .control-button:hover {
+        background: #323232;
+    }
+
+    .control-button:active {
+        transform: scale(0.91);
+    }
+
+    .control-button svg {
+        width: 27px;
+        height: 27px;
+
+        overflow: visible;
+
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* Микрофон */
+
+    .microphone-button .microphone-slash {
+        opacity: 0;
+
+        stroke-width: 2.3;
+
+        transform-origin: center;
+        transform: scale(0.72);
+
+        transition:
+            opacity 0.16s ease,
+            transform 0.16s ease;
+    }
+
+    .microphone-button.muted {
+        color: #111111;
+        background: #ededed;
+    }
+
+    .microphone-button.muted .microphone-slash {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .microphone-button.muted .microphone-body {
+        opacity: 0.48;
+    }
+
+    /* Динамик */
+
+    .speaker-button.active {
+        color: #111111;
+        background: #ededed;
+    }
+
+    /* Сброс звонка */
+
+    .end-call-button {
+        color: #ffffff;
+        background: var(--hangup);
+    }
+
+    .end-call-button:hover {
+        background: var(--hangup-hover);
+    }
+
+    .end-call-button:active {
+        transform: scale(0.9);
+    }
+
+    .end-call-button svg {
+        position: relative;
+        top: -1px;
+
+        width: 30px;
+        height: 30px;
+
+        stroke-width: 2.05;
+    }
+
+    /* Маленькие телефоны */
+
+    @media (max-width: 360px) {
+        .app {
+            padding-right: 8px;
+            padding-left: 8px;
+        }
+
+        .search {
+            width: 180px;
+            min-width: 180px;
+            max-width: 180px;
+
+            flex-basis: 180px;
+        }
+
+        .search-input {
+            width: 180px;
+            font-size: 13.5px;
+        }
+
+        .top-button {
+            width: 36px;
+        }
+
+        .display-option {
+            padding: 0 8px;
+            font-size: 11px;
+        }
+
+        .call-verification {
+            max-width: calc(100% - 24px);
+        }
+
+        .call-verification.emoji-mode {
+            gap: 2px;
+            font-size: 20px;
+        }
+
+        .call-controls {
+            gap: 12px;
+        }
+    }
+
+    /* Невысокие экраны */
+
+    @media (max-height: 650px) {
+        .call-contact {
+            margin-top: 72px;
+        }
+
+        .call-avatar {
+            width: 96px;
+            height: 96px;
+
+            margin-bottom: 17px;
+        }
+
+        .call-name {
+            margin-bottom: 7px;
+            font-size: 22px;
+        }
+
+        .call-controls {
+            margin-top: 24px;
+        }
+    }
+
+    /* Планшеты и десктоп */
+
+    @media (min-width: 541px) {
+        body {
+            display: flex;
+            justify-content: center;
+        }
+
+        .app {
+            border-right: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+        }
+    }
+
+    @media (hover: none) {
+        .top-button:hover,
+        .call-button:hover,
+        .modal-button:hover,
+        .control-button:hover,
+        .end-call-button:hover {
+            background: inherit;
+        }
+
+        .end-call-button:hover {
+            background: var(--hangup);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+        }
+    }
+  </style>
+</head>
+
+<body>
+<main class="app">
+  <header class="topbar">
+    <div class="search">
+      <svg
+              class="search-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+      >
+        <circle cx="10.5" cy="10.5" r="5.8"></circle>
+        <path d="M15 15 20 20"></path>
+      </svg>
+
+      <input
+              id="searchInput"
+              class="search-input"
+              type="search"
+              placeholder="Поиск контактов"
+              autocomplete="off"
+              aria-label="Поиск контактов"
+      >
+
+      <button
+              id="clearSearch"
+              class="clear-search"
+              type="button"
+              aria-label="Очистить поиск"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 7 17 17"></path>
+          <path d="M17 7 7 17"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="top-actions">
+      <button
+              id="settingsButton"
+              class="top-button settings-button"
+              type="button"
+              aria-label="Настройки"
+      >
+        <svg
+                class="settings-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+        >
+          <path
+                  d="
+                                M9.55 2.7
+                                H14.45
+                                L15 4.85
+                                C15.48 5.02 15.94 5.27 16.35 5.55
+                                L18.5 4.95
+                                L20.95 9.05
+                                L19.35 10.6
+                                C19.4 11.06 19.4 11.54 19.35 12
+                                C19.4 12.46 19.4 12.94 19.35 13.4
+                                L20.95 14.95
+                                L18.5 19.05
+                                L16.35 18.45
+                                C15.94 18.73 15.48 18.98 15 19.15
+                                L14.45 21.3
+                                H9.55
+                                L9 19.15
+                                C8.52 18.98 8.06 18.73 7.65 18.45
+                                L5.5 19.05
+                                L3.05 14.95
+                                L4.65 13.4
+                                C4.6 12.94 4.6 12.46 4.65 12
+                                C4.6 11.54 4.6 11.06 4.65 10.6
+                                L3.05 9.05
+                                L5.5 4.95
+                                L7.65 5.55
+                                C8.06 5.27 8.52 5.02 9 4.85
+                                Z
+                            "
+          ></path>
+
+          <circle
+                  class="gear-center"
+                  cx="12"
+                  cy="12"
+                  r="3.1"
+          ></circle>
+        </svg>
+      </button>
+
+      <button
+              id="profileButton"
+              class="top-button"
+              type="button"
+              aria-label="Профиль"
+      >
+        <svg
+                class="profile-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+        >
+          <circle cx="12" cy="7.5" r="3.4"></circle>
+          <path d="M5.5 20c.55-4.1 3-6.2 6.5-6.2s5.95 2.1 6.5 6.2"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <section>
+    <div id="contactsList" class="contacts"></div>
+
+    <div id="emptyState" class="empty">
+      <h2 class="empty-title">Ничего не найдено</h2>
+      <p class="empty-text">Попробуйте изменить запрос</p>
+    </div>
+  </section>
+</main>
+
+<!-- Контакт -->
+
+<div id="contactModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+
+    <div class="modal-profile">
+      <img
+              id="modalAvatar"
+              class="modal-avatar"
+              src=""
+              alt=""
+      >
+
+      <h2 id="modalName" class="modal-name"></h2>
+      <p id="modalStatus" class="modal-status"></p>
+    </div>
+
+    <div class="modal-actions">
+      <button
+              id="closeContactModal"
+              class="modal-button"
+              type="button"
+      >
+        Закрыть
+      </button>
+
+      <button
+              id="modalCallButton"
+              class="modal-button primary"
+              type="button"
+      >
+        Позвонить
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Профиль -->
+
+<div id="profileModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+
+    <div class="modal-profile">
+      <div class="profile-avatar-editor">
+        <img
+                id="profileAvatarImage"
+                class="profile-avatar-image"
+                src=""
+                alt="Аватар профиля"
+        >
+
+        <div
+                id="profileAvatarPlaceholder"
+                class="profile-avatar-placeholder"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="7.5" r="3.4"></circle>
+            <path d="M5.5 20c.55-4.1 3-6.2 6.5-6.2s5.95 2.1 6.5 6.2"></path>
+          </svg>
+        </div>
+
+        <label
+                class="avatar-change-button"
+                for="avatarFileInput"
+                aria-label="Изменить аватар"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7.5h3l1.4-2h7.2l1.4 2h3v11H4Z"></path>
+            <circle cx="12" cy="13" r="3.2"></circle>
+          </svg>
+        </label>
+
+        <input
+                id="avatarFileInput"
+                class="avatar-file-input"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+        >
+      </div>
+
+      <div class="profile-form">
+        <div class="username-field">
+          <span class="username-prefix">@</span>
+
+          <input
+                  id="usernameInput"
+                  class="username-input"
+                  type="text"
+                  maxlength="16"
+                  value="maslovsky"
+                  placeholder="maslovsky"
+                  autocomplete="off"
+                  autocapitalize="none"
+                  spellcheck="false"
+          >
+
+          <span
+                  id="usernameCounter"
+                  class="username-counter"
+          >
+                            9/16
+                        </span>
+        </div>
+
+        <p
+                id="usernameError"
+                class="username-error"
+        ></p>
+
+        <div class="profile-buttons">
+          <button
+                  id="closeProfileModal"
+                  class="modal-button"
+                  type="button"
+          >
+            Закрыть
+          </button>
+
+          <button
+                  id="saveProfileButton"
+                  class="modal-button primary"
+                  type="button"
+          >
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Настройки -->
+
+<div id="settingsModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+
+    <h2 class="settings-title">Настройки</h2>
+
+    <div class="setting-row">
+      <span class="setting-name">Шифрование</span>
+
+      <button
+              id="encryptionSwitch"
+              class="switch"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              aria-label="Шифрование"
+      ></button>
+    </div>
+
+    <div
+            id="encryptionOptions"
+            class="encryption-options"
+    >
+      <div class="display-setting">
+        <span class="setting-name">Отображение</span>
+
+        <div class="display-options">
+          <button
+                  class="display-option active"
+                  type="button"
+                  data-display-mode="emoji"
+          >
+            Смайлики
+          </button>
+
+          <button
+                  class="display-option"
+                  type="button"
+                  data-display-mode="code"
+          >
+            Цифровой код
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button
+            id="closeSettingsModal"
+            class="modal-button primary"
+            type="button"
+            style="width: 100%; margin-top: 22px;"
+    >
+      Готово
+    </button>
+  </div>
+</div>
+
+<!-- Экран звонка -->
+
+<div id="callScreen" class="call-screen">
+  <div
+          id="callVerification"
+          class="call-verification"
+          aria-label="Код шифрования"
+  ></div>
+
+  <div class="call-contact">
+    <img
+            id="callAvatar"
+            class="call-avatar"
+            src=""
+            alt=""
+    >
+
+    <h2 id="callName" class="call-name"></h2>
+
+    <p id="callStatus" class="call-status">
+      Вызов...
+    </p>
+  </div>
+
+  <div class="call-controls">
+    <!-- Микрофон -->
+
+    <button
+            id="microphoneButton"
+            class="control-button microphone-button"
+            type="button"
+            aria-label="Выключить микрофон"
+            aria-pressed="false"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <g class="microphone-body">
+          <rect
+                  x="9"
+                  y="3"
+                  width="6"
+                  height="11"
+                  rx="3"
+          ></rect>
+
+          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"></path>
+          <path d="M12 18v3"></path>
+          <path d="M9 21h6"></path>
+        </g>
+
+        <path
+                class="microphone-slash"
+                d="M4.5 4.5 19.5 19.5"
+        ></path>
+      </svg>
+    </button>
+
+    <!-- Громкая связь -->
+
+    <button
+            id="speakerButton"
+            class="control-button speaker-button"
+            type="button"
+            aria-label="Включить громкую связь"
+            aria-pressed="false"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 10v4h4l5 4V6l-5 4H5Z"></path>
+        <path d="M17 9a4 4 0 0 1 0 6"></path>
+        <path d="M19 6.5a8 8 0 0 1 0 11"></path>
+      </svg>
+    </button>
+
+    <!-- Завершить звонок -->
+
+    <button
+            id="endCallButton"
+            class="control-button end-call-button"
+            type="button"
+            aria-label="Завершить звонок"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+                d="
+                            M4.65 14.7
+                            C8.95 11.25 15.05 11.25 19.35 14.7
+                            C19.8 15.05 19.9 15.7 19.55 16.15
+                            L18.1 18
+                            C17.75 18.45 17.1 18.55 16.65 18.2
+                            L14.55 16.55
+                            C12.9 15.25 11.1 15.25 9.45 16.55
+                            L7.35 18.2
+                            C6.9 18.55 6.25 18.45 5.9 18
+                            L4.45 16.15
+                            C4.1 15.7 4.2 15.05 4.65 14.7
+                            Z
+                        "
+        ></path>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  const contacts = [
+      {
+          id: 1,
+          name: "Александр Ковалёв",
+          status: "В сети",
+          online: true,
+          avatar: "https://randomuser.me/api/portraits/men/32.jpg"
+      },
+      {
+          id: 2,
+          name: "Анна Морозова",
+          status: "Была недавно",
+          online: false,
+          avatar: "https://randomuser.me/api/portraits/women/44.jpg"
+      },
+      {
+          id: 3,
+          name: "Максим Волков",
+          status: "В сети",
+          online: true,
+          avatar: "https://randomuser.me/api/portraits/men/46.jpg"
+      },
+      {
+          id: 4,
+          name: "Екатерина Соколова",
+          status: "Была 15 минут назад",
+          online: false,
+          avatar: "https://randomuser.me/api/portraits/women/65.jpg"
+      },
+      {
+          id: 5,
+          name: "Дмитрий Орлов",
+          status: "В сети",
+          online: true,
+          avatar: "https://randomuser.me/api/portraits/men/22.jpg"
+      },
+      {
+          id: 6,
+          name: "София Белова",
+          status: "Была вчера",
+          online: false,
+          avatar: "https://randomuser.me/api/portraits/women/32.jpg"
+      },
+      {
+          id: 7,
+          name: "Илья Новиков",
+          status: "В сети",
+          online: true,
+          avatar: "https://randomuser.me/api/portraits/men/52.jpg"
+      },
+      {
+          id: 8,
+          name: "Мария Лебедева",
+          status: "Была недавно",
+          online: false,
+          avatar: "https://randomuser.me/api/portraits/women/68.jpg"
+      }
+  ];
+
+  const ENCRYPTION_EMOJIS = [
+      "🐱", "🐈", "😺", "😸", "😼",
+      "🐯", "🦁", "🐼", "🐨", "🦊",
+      "🐸", "🐵", "🐧", "🦄", "🐙",
+      "🍀", "🌙", "⭐", "☀️", "🌈",
+      "🍓", "🍒", "🍋", "🥝", "🍉",
+      "🚀", "🎧", "🎮", "⚡", "🔥",
+      "💎", "🫧", "🌊", "❄️", "🪐"
+  ];
+
+  const CODE_CHARACTERS =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+
+  const USERNAME_MAX_LENGTH = 16;
+  const USERNAME_PATTERN = /^[a-zA-Z1-9_]+$/;
+
+  const contactsList =
+      document.getElementById("contactsList");
+
+  const searchInput =
+      document.getElementById("searchInput");
+
+  const clearSearch =
+      document.getElementById("clearSearch");
+
+  const emptyState =
+      document.getElementById("emptyState");
+
+  const settingsButton =
+      document.getElementById("settingsButton");
+
+  const profileButton =
+      document.getElementById("profileButton");
+
+  const contactModal =
+      document.getElementById("contactModal");
+
+  const profileModal =
+      document.getElementById("profileModal");
+
+  const settingsModal =
+      document.getElementById("settingsModal");
+
+  const modalAvatar =
+      document.getElementById("modalAvatar");
+
+  const modalName =
+      document.getElementById("modalName");
+
+  const modalStatus =
+      document.getElementById("modalStatus");
+
+  const modalCallButton =
+      document.getElementById("modalCallButton");
+
+  const callScreen =
+      document.getElementById("callScreen");
+
+  const callAvatar =
+      document.getElementById("callAvatar");
+
+  const callName =
+      document.getElementById("callName");
+
+  const callStatus =
+      document.getElementById("callStatus");
+
+  const callVerification =
+      document.getElementById("callVerification");
+
+  const microphoneButton =
+      document.getElementById("microphoneButton");
+
+  const speakerButton =
+      document.getElementById("speakerButton");
+
+  const endCallButton =
+      document.getElementById("endCallButton");
+
+  const avatarFileInput =
+      document.getElementById("avatarFileInput");
+
+  const profileAvatarImage =
+      document.getElementById("profileAvatarImage");
+
+  const profileAvatarPlaceholder =
+      document.getElementById("profileAvatarPlaceholder");
+
+  const usernameInput =
+      document.getElementById("usernameInput");
+
+  const usernameCounter =
+      document.getElementById("usernameCounter");
+
+  const usernameError =
+      document.getElementById("usernameError");
+
+  const saveProfileButton =
+      document.getElementById("saveProfileButton");
+
+  const encryptionSwitch =
+      document.getElementById("encryptionSwitch");
+
+  const encryptionOptions =
+      document.getElementById("encryptionOptions");
+
+  const displayOptionButtons =
+      document.querySelectorAll(".display-option");
+
+  let selectedContact = null;
+
+  let connectionTimer = null;
+  let callDurationTimer = null;
+  let callStartedAt = null;
+
+  let ringbackTimer = null;
+  let activeRingbackNodes = [];
+
+  let microphoneMuted = false;
+  let speakerEnabled = false;
+
+  let encryptionEnabled =
+      localStorage.getItem("encryptionEnabled") === "true";
+
+  let displayMode =
+      localStorage.getItem("displayMode") || "emoji";
+
+  let savedUsername =
+      localStorage.getItem("profileUsername") || "maslovsky";
+
+  let savedAvatar =
+      localStorage.getItem("profileAvatar") || "";
+
+  let pendingAvatar = savedAvatar;
+
+  /* Звуковая система */
+
+  let audioContext = null;
+
+  function getAudioContext() {
+      if (!audioContext) {
+          const AudioContextClass =
+              window.AudioContext ||
+              window.webkitAudioContext;
+
+          if (!AudioContextClass) {
+              return null;
+          }
+
+          audioContext = new AudioContextClass();
+      }
+
+      if (audioContext.state === "suspended") {
+          audioContext.resume().catch(() => {});
+      }
+
+      return audioContext;
+  }
+
+  function playTone({
+      frequency = 440,
+      endFrequency = null,
+      duration = 0.08,
+      volume = 0.04,
+      type = "sine",
+      delay = 0
+  } = {}) {
+      const context = getAudioContext();
+
+      if (!context) {
+          return;
+      }
+
+      const startTime =
+          context.currentTime + delay;
+
+      const endTime =
+          startTime + duration;
+
+      const oscillator =
+          context.createOscillator();
+
+      const gain =
+          context.createGain();
+
+      oscillator.type = type;
+
+      oscillator.frequency.setValueAtTime(
+          frequency,
+          startTime
+      );
+
+      if (endFrequency !== null) {
+          oscillator.frequency.exponentialRampToValueAtTime(
+              Math.max(endFrequency, 1),
+              endTime
+          );
+      }
+
+      gain.gain.setValueAtTime(
+          0.0001,
+          startTime
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+          volume,
+          startTime + Math.min(0.018, duration / 3)
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          endTime
+      );
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+
+      oscillator.start(startTime);
+      oscillator.stop(endTime + 0.02);
+  }
+
+  function playSoftClick() {
+      playTone({
+          frequency: 520,
+          endFrequency: 430,
+          duration: 0.055,
+          volume: 0.018
+      });
+  }
+
+  function playOpenSound() {
+      playTone({
+          frequency: 420,
+          endFrequency: 550,
+          duration: 0.09,
+          volume: 0.022
+      });
+
+      playTone({
+          frequency: 620,
+          endFrequency: 760,
+          duration: 0.1,
+          volume: 0.016,
+          delay: 0.045
+      });
+  }
+
+  function playCloseSound() {
+      playTone({
+          frequency: 540,
+          endFrequency: 390,
+          duration: 0.1,
+          volume: 0.02
+      });
+  }
+
+  function playToggleSound(enabled) {
+      if (enabled) {
+          playTone({
+              frequency: 470,
+              endFrequency: 650,
+              duration: 0.09,
+              volume: 0.025
+          });
+
+          playTone({
+              frequency: 680,
+              endFrequency: 820,
+              duration: 0.08,
+              volume: 0.017,
+              delay: 0.05
+          });
+      } else {
+          playTone({
+              frequency: 610,
+              endFrequency: 410,
+              duration: 0.11,
+              volume: 0.023
+          });
+      }
+  }
+
+  function playSelectionSound() {
+      playTone({
+          frequency: 620,
+          endFrequency: 720,
+          duration: 0.065,
+          volume: 0.022
+      });
+
+      playTone({
+          frequency: 820,
+          endFrequency: 900,
+          duration: 0.06,
+          volume: 0.014,
+          delay: 0.035
+      });
+  }
+
+  function playSaveSound() {
+      playTone({
+          frequency: 520,
+          endFrequency: 650,
+          duration: 0.1,
+          volume: 0.025
+      });
+
+      playTone({
+          frequency: 780,
+          endFrequency: 920,
+          duration: 0.13,
+          volume: 0.021,
+          delay: 0.065
+      });
+  }
+
+  function playConnectionSound() {
+      playTone({
+          frequency: 520,
+          endFrequency: 640,
+          duration: 0.11,
+          volume: 0.024
+      });
+
+      playTone({
+          frequency: 700,
+          endFrequency: 840,
+          duration: 0.13,
+          volume: 0.022,
+          delay: 0.085
+      });
+  }
+
+  function playEndCallSound() {
+      playTone({
+          frequency: 520,
+          endFrequency: 310,
+          duration: 0.16,
+          volume: 0.03
+      });
+
+      playTone({
+          frequency: 390,
+          endFrequency: 250,
+          duration: 0.14,
+          volume: 0.02,
+          delay: 0.1
+      });
+  }
+
+  /* Гудки */
+
+  function stopActiveRingbackNodes() {
+      activeRingbackNodes.forEach((node) => {
+          try {
+              node.stop();
+          } catch (error) {
+              // Узел уже остановлен.
+          }
+
+          try {
+              node.disconnect();
+          } catch (error) {
+              // Узел уже отключён.
+          }
+      });
+
+      activeRingbackNodes = [];
+  }
+
+  function playRingbackPulse() {
+      const context = getAudioContext();
+
+      if (!context) {
+          return;
+      }
+
+      stopActiveRingbackNodes();
+
+      const startTime = context.currentTime;
+      const duration = 0.95;
+      const endTime = startTime + duration;
+
+      const masterGain =
+          context.createGain();
+
+      const filter =
+          context.createBiquadFilter();
+
+      filter.type = "lowpass";
+
+      filter.frequency.setValueAtTime(
+          1250,
+          startTime
+      );
+
+      filter.Q.setValueAtTime(
+          0.7,
+          startTime
+      );
+
+      masterGain.gain.setValueAtTime(
+          0.0001,
+          startTime
+      );
+
+      masterGain.gain.exponentialRampToValueAtTime(
+          0.038,
+          startTime + 0.09
+      );
+
+      masterGain.gain.setValueAtTime(
+          0.038,
+          endTime - 0.14
+      );
+
+      masterGain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          endTime
+      );
+
+      const oscillatorOne =
+          context.createOscillator();
+
+      const oscillatorTwo =
+          context.createOscillator();
+
+      oscillatorOne.type = "sine";
+      oscillatorTwo.type = "sine";
+
+      oscillatorOne.frequency.setValueAtTime(
+          425,
+          startTime
+      );
+
+      oscillatorTwo.frequency.setValueAtTime(
+          450,
+          startTime
+      );
+
+      const oscillatorOneGain =
+          context.createGain();
+
+      const oscillatorTwoGain =
+          context.createGain();
+
+      oscillatorOneGain.gain.setValueAtTime(
+          0.68,
+          startTime
+      );
+
+      oscillatorTwoGain.gain.setValueAtTime(
+          0.32,
+          startTime
+      );
+
+      oscillatorOne.connect(
+          oscillatorOneGain
+      );
+
+      oscillatorTwo.connect(
+          oscillatorTwoGain
+      );
+
+      oscillatorOneGain.connect(filter);
+      oscillatorTwoGain.connect(filter);
+
+      filter.connect(masterGain);
+      masterGain.connect(context.destination);
+
+      oscillatorOne.start(startTime);
+      oscillatorTwo.start(startTime);
+
+      oscillatorOne.stop(endTime);
+      oscillatorTwo.stop(endTime);
+
+      activeRingbackNodes = [
+          oscillatorOne,
+          oscillatorTwo
+      ];
+
+      window.setTimeout(() => {
+          try {
+              oscillatorOne.disconnect();
+              oscillatorTwo.disconnect();
+              oscillatorOneGain.disconnect();
+              oscillatorTwoGain.disconnect();
+              filter.disconnect();
+              masterGain.disconnect();
+          } catch (error) {
+              // Узлы уже отключены.
+          }
+
+          activeRingbackNodes = [];
+      }, duration * 1000 + 150);
+  }
+
+  function startRingback() {
+      stopRingback();
+
+      playRingbackPulse();
+
+      ringbackTimer = window.setInterval(() => {
+          playRingbackPulse();
+      }, 2900);
+  }
+
+  function stopRingback() {
+      if (ringbackTimer !== null) {
+          window.clearInterval(ringbackTimer);
+          ringbackTimer = null;
+      }
+
+      stopActiveRingbackNodes();
+  }
+
+  /* Контакты */
+
+  function createPhoneIcon() {
+      return `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                  d="
+                      M7.4 4.5
+                      9.6 8
+                      a1.5 1.5 0 0 1-.2 1.8
+                      l-1.2 1.2
+                      a15.5 15.5 0 0 0 4.8 4.8
+                      l1.2-1.2
+                      a1.5 1.5 0 0 1 1.8-.2
+                      l3.5 2.2
+                      a1.5 1.5 0 0 1 .7 1.5
+                      v1.4
+                      a1.5 1.5 0 0 1-1.5 1.5
+                      C10 21 3 14 3 5.3
+                      a1.5 1.5 0 0 1 1.5-1.5
+                      h1.4
+                      a1.5 1.5 0 0 1 1.5.7
+                      Z
+                  "
+              ></path>
+          </svg>
+      `;
+  }
+
+  function renderContacts(list) {
+      contactsList.innerHTML = "";
+
+      emptyState.classList.toggle(
+          "visible",
+          list.length === 0
+      );
+
+      list.forEach((contact) => {
+          const item =
+              document.createElement("div");
+
+          item.className = "contact";
+
+          item.innerHTML = `
+              <div class="avatar-wrapper">
+                  <img
+                      class="avatar"
+                      src="${contact.avatar}"
+                      alt="${contact.name}"
+                      loading="lazy"
+                  >
+
+                  ${
+                      contact.online
+                          ? '<span class="status-dot"></span>'
+                          : ""
+                  }
+              </div>
+
+              <div class="contact-info">
+                  <h2 class="contact-name">
+                      ${contact.name}
+                  </h2>
+
+                  <p class="contact-status">
+                      ${contact.status}
+                  </p>
+              </div>
+
+              <button
+                  class="call-button"
+                  type="button"
+                  aria-label="Позвонить ${contact.name}"
+              >
+                  ${createPhoneIcon()}
+              </button>
+          `;
+
+          item.addEventListener("click", (event) => {
+              if (event.target.closest(".call-button")) {
+                  playSoftClick();
+                  startCall(contact);
+                  return;
+              }
+
+              playOpenSound();
+              openContact(contact);
+          });
+
+          contactsList.appendChild(item);
+      });
+  }
+
+  function filterContacts() {
+      const query =
+          searchInput.value.trim().toLowerCase();
+
+      clearSearch.classList.toggle(
+          "visible",
+          query.length > 0
+      );
+
+      const filteredContacts =
+          contacts.filter((contact) => {
+              return contact.name
+                  .toLowerCase()
+                  .includes(query);
+          });
+
+      renderContacts(filteredContacts);
+  }
+
+  /* Модальные окна */
+
+  function openModal(modal) {
+      modal.classList.add("visible");
+      document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(modal) {
+      modal.classList.remove("visible");
+
+      if (
+          !document.querySelector(
+              ".modal-overlay.visible"
+          ) &&
+          !callScreen.classList.contains("visible")
+      ) {
+          document.body.style.overflow = "";
+      }
+  }
+
+  function openContact(contact) {
+      selectedContact = contact;
+
+      modalAvatar.src = contact.avatar;
+      modalAvatar.alt = contact.name;
+
+      modalName.textContent = contact.name;
+      modalStatus.textContent = contact.status;
+
+      openModal(contactModal);
+  }
+
+  /* Проверочный код звонка */
+
+  function getRandomItem(array) {
+      return array[
+          Math.floor(Math.random() * array.length)
+      ];
+  }
+
+  function createRandomEmojiVerification() {
+      const selectedEmojis = [];
+
+      while (selectedEmojis.length < 5) {
+          const emoji =
+              getRandomItem(ENCRYPTION_EMOJIS);
+
+          selectedEmojis.push(emoji);
+      }
+
+      return selectedEmojis;
+  }
+
+  function createRandomCodeVerification() {
+      let code = "";
+
+      for (let index = 0; index < 5; index++) {
+          code += CODE_CHARACTERS.charAt(
+              Math.floor(
+                  Math.random() *
+                  CODE_CHARACTERS.length
+              )
+          );
+      }
+
+      return code;
+  }
+
+  function updateCallVerification() {
+      callVerification.innerHTML = "";
+
+      callVerification.classList.remove(
+          "visible",
+          "emoji-mode",
+          "code-mode"
+      );
+
+      if (!encryptionEnabled) {
+          return;
+      }
+
+      callVerification.classList.add("visible");
+
+      if (displayMode === "code") {
+          const code =
+              createRandomCodeVerification();
+
+          callVerification.classList.add(
+              "code-mode"
+          );
+
+          callVerification.textContent = code;
+          return;
+      }
+
+      const emojis =
+          createRandomEmojiVerification();
+
+      callVerification.classList.add(
+          "emoji-mode"
+      );
+
+      emojis.forEach((emoji) => {
+          const item =
+              document.createElement("span");
+
+          item.className =
+              "verification-item";
+
+          item.textContent = emoji;
+
+          callVerification.appendChild(item);
+      });
+  }
+
+  /* Таймер звонка */
+
+  function formatCallDuration(totalSeconds) {
+      const hours =
+          Math.floor(totalSeconds / 3600);
+
+      const minutes =
+          Math.floor(
+              (totalSeconds % 3600) / 60
+          );
+
+      const seconds =
+          totalSeconds % 60;
+
+      const formattedMinutes =
+          String(minutes).padStart(2, "0");
+
+      const formattedSeconds =
+          String(seconds).padStart(2, "0");
+
+      if (hours > 0) {
+          return (
+              String(hours).padStart(2, "0") +
+              ":" +
+              formattedMinutes +
+              ":" +
+              formattedSeconds
+          );
+      }
+
+      return (
+          formattedMinutes +
+          ":" +
+          formattedSeconds
+      );
+  }
+
+  function updateCallDuration() {
+      if (callStartedAt === null) {
+          return;
+      }
+
+      const elapsedSeconds =
+          Math.floor(
+              (Date.now() - callStartedAt) /
+              1000
+          );
+
+      callStatus.textContent =
+          formatCallDuration(elapsedSeconds);
+  }
+
+  function startCallDuration() {
+      stopCallDuration();
+
+      callStartedAt = Date.now();
+
+      updateCallDuration();
+
+      callDurationTimer =
+          window.setInterval(
+              updateCallDuration,
+              1000
+          );
+  }
+
+  function stopCallDuration() {
+      if (callDurationTimer !== null) {
+          window.clearInterval(
+              callDurationTimer
+          );
+
+          callDurationTimer = null;
+      }
+
+      callStartedAt = null;
+  }
+
+  /* Кнопки звонка */
+
+  function resetCallControls() {
+      microphoneMuted = false;
+      speakerEnabled = false;
+
+      microphoneButton.classList.remove(
+          "muted"
+      );
+
+      microphoneButton.setAttribute(
+          "aria-pressed",
+          "false"
+      );
+
+      microphoneButton.setAttribute(
+          "aria-label",
+          "Выключить микрофон"
+      );
+
+      speakerButton.classList.remove(
+          "active"
+      );
+
+      speakerButton.setAttribute(
+          "aria-pressed",
+          "false"
+      );
+
+      speakerButton.setAttribute(
+          "aria-label",
+          "Включить громкую связь"
+      );
+  }
+
+  function startCall(contact) {
+      selectedContact = contact;
+
+      closeModal(contactModal);
+
+      callAvatar.src = contact.avatar;
+      callAvatar.alt = contact.name;
+
+      callName.textContent = contact.name;
+      callStatus.textContent = "Вызов...";
+
+      resetCallControls();
+      stopCallDuration();
+      updateCallVerification();
+
+      callScreen.classList.add("visible");
+      document.body.style.overflow = "hidden";
+
+      if (connectionTimer !== null) {
+          window.clearTimeout(connectionTimer);
+      }
+
+      startRingback();
+
+      connectionTimer =
+          window.setTimeout(() => {
+              stopRingback();
+
+              playConnectionSound();
+              startCallDuration();
+          }, 6500);
+  }
+
+  function endCall() {
+      if (connectionTimer !== null) {
+          window.clearTimeout(
+              connectionTimer
+          );
+
+          connectionTimer = null;
+      }
+
+      stopRingback();
+      stopCallDuration();
+
+      playEndCallSound();
+
+      callStatus.textContent =
+          "Звонок завершён";
+
+      window.setTimeout(() => {
+          callScreen.classList.remove(
+              "visible"
+          );
+
+          callVerification.classList.remove(
+              "visible"
+          );
+
+          document.body.style.overflow = "";
+
+          resetCallControls();
+      }, 600);
+  }
+
+  function toggleMicrophone() {
+      microphoneMuted =
+          !microphoneMuted;
+
+      microphoneButton.classList.toggle(
+          "muted",
+          microphoneMuted
+      );
+
+      microphoneButton.setAttribute(
+          "aria-pressed",
+          String(microphoneMuted)
+      );
+
+      microphoneButton.setAttribute(
+          "aria-label",
+          microphoneMuted
+              ? "Включить микрофон"
+              : "Выключить микрофон"
+      );
+
+      playToggleSound(!microphoneMuted);
+  }
+
+  function toggleSpeaker() {
+      speakerEnabled =
+          !speakerEnabled;
+
+      speakerButton.classList.toggle(
+          "active",
+          speakerEnabled
+      );
+
+      speakerButton.setAttribute(
+          "aria-pressed",
+          String(speakerEnabled)
+      );
+
+      speakerButton.setAttribute(
+          "aria-label",
+          speakerEnabled
+              ? "Выключить громкую связь"
+              : "Включить громкую связь"
+      );
+
+      playToggleSound(speakerEnabled);
+  }
+
+  /* Профиль */
+
+  function showProfileAvatar(imageSource) {
+      if (imageSource) {
+          profileAvatarImage.src =
+              imageSource;
+
+          profileAvatarImage.classList.add(
+              "visible"
+          );
+
+          profileAvatarPlaceholder.classList.add(
+              "hidden"
+          );
+      } else {
+          profileAvatarImage.src = "";
+
+          profileAvatarImage.classList.remove(
+              "visible"
+          );
+
+          profileAvatarPlaceholder.classList.remove(
+              "hidden"
+          );
+      }
+  }
+
+  function sanitizeUsername(value) {
+      return value
+          .replace(/^@+/, "")
+          .replace(/[^a-zA-Z1-9_]/g, "")
+          .slice(0, USERNAME_MAX_LENGTH);
+  }
+
+  function validateUsername() {
+      const username =
+          usernameInput.value;
+
+      usernameCounter.textContent =
+          `${username.length}/${USERNAME_MAX_LENGTH}`;
+
+      let valid = true;
+      let errorText = "";
+
+      if (username.length === 0) {
+          valid = false;
+          errorText = "Введите юзернейм";
+      } else if (
+          !USERNAME_PATTERN.test(username)
+      ) {
+          valid = false;
+          errorText = "Недопустимые символы";
+      }
+
+      usernameInput.classList.toggle(
+          "invalid",
+          !valid
+      );
+
+      usernameError.textContent =
+          errorText;
+
+      usernameError.classList.toggle(
+          "visible",
+          !valid
+      );
+
+      saveProfileButton.disabled =
+          !valid;
+
+      return valid;
+  }
+
+  function openProfileEditor() {
+      usernameInput.value =
+          savedUsername;
+
+      pendingAvatar =
+          savedAvatar;
+
+      showProfileAvatar(savedAvatar);
+      validateUsername();
+
+      openModal(profileModal);
+  }
+
+  function resetProfileEditor() {
+      usernameInput.value =
+          savedUsername;
+
+      pendingAvatar =
+          savedAvatar;
+
+      showProfileAvatar(savedAvatar);
+      validateUsername();
+  }
+
+  function saveProfile() {
+      if (!validateUsername()) {
+          return;
+      }
+
+      savedUsername =
+          usernameInput.value;
+
+      savedAvatar =
+          pendingAvatar;
+
+      localStorage.setItem(
+          "profileUsername",
+          savedUsername
+      );
+
+      if (savedAvatar) {
+          try {
+              localStorage.setItem(
+                  "profileAvatar",
+                  savedAvatar
+              );
+          } catch (error) {
+              alert(
+                  "Изображение слишком большое. Выберите файл меньшего размера."
+              );
+
+              return;
+          }
+      } else {
+          localStorage.removeItem(
+              "profileAvatar"
+          );
+      }
+
+      playSaveSound();
+      closeModal(profileModal);
+  }
+
+  /* Настройки */
+
+  function updateEncryptionView() {
+      encryptionSwitch.classList.toggle(
+          "active",
+          encryptionEnabled
+      );
+
+      encryptionSwitch.setAttribute(
+          "aria-checked",
+          String(encryptionEnabled)
+      );
+
+      encryptionOptions.classList.toggle(
+          "visible",
+          encryptionEnabled
+      );
+  }
+
+  function updateDisplayMode() {
+      displayOptionButtons.forEach(
+          (button) => {
+              button.classList.toggle(
+                  "active",
+                  button.dataset.displayMode ===
+                      displayMode
+              );
+          }
+      );
+  }
+
+  /* События */
+
+  searchInput.addEventListener(
+      "input",
+      filterContacts
+  );
+
+  clearSearch.addEventListener(
+      "click",
+      () => {
+          playSoftClick();
+
+          searchInput.value = "";
+          searchInput.focus();
+
+          filterContacts();
+      }
+  );
+
+  settingsButton.addEventListener(
+      "click",
+      () => {
+          playOpenSound();
+          openModal(settingsModal);
+      }
+  );
+
+  profileButton.addEventListener(
+      "click",
+      () => {
+          playOpenSound();
+          openProfileEditor();
+      }
+  );
+
+  encryptionSwitch.addEventListener(
+      "click",
+      () => {
+          encryptionEnabled =
+              !encryptionEnabled;
+
+          localStorage.setItem(
+              "encryptionEnabled",
+              String(encryptionEnabled)
+          );
+
+          playToggleSound(
+              encryptionEnabled
+          );
+
+          updateEncryptionView();
+      }
+  );
+
+  displayOptionButtons.forEach(
+      (button) => {
+          button.addEventListener(
+              "click",
+              () => {
+                  const selectedMode =
+                      button.dataset.displayMode;
+
+                  if (
+                      displayMode ===
+                      selectedMode
+                  ) {
+                      playSoftClick();
+                      return;
+                  }
+
+                  displayMode =
+                      selectedMode;
+
+                  localStorage.setItem(
+                      "displayMode",
+                      displayMode
+                  );
+
+                  playSelectionSound();
+                  updateDisplayMode();
+              }
+          );
+      }
+  );
+
+  usernameInput.addEventListener(
+      "input",
+      () => {
+          const sanitizedValue =
+              sanitizeUsername(
+                  usernameInput.value
+              );
+
+          if (
+              usernameInput.value !==
+              sanitizedValue
+          ) {
+              usernameInput.value =
+                  sanitizedValue;
+          }
+
+          validateUsername();
+      }
+  );
+
+  avatarFileInput.addEventListener(
+      "change",
+      () => {
+          const file =
+              avatarFileInput.files[0];
+
+          if (!file) {
+              return;
+          }
+
+          if (
+              !file.type.startsWith(
+                  "image/"
+              )
+          ) {
+              alert(
+                  "Выберите изображение."
+              );
+
+              avatarFileInput.value = "";
+              return;
+          }
+
+          const maxSize =
+              3 * 1024 * 1024;
+
+          if (file.size > maxSize) {
+              alert(
+                  "Размер изображения не должен превышать 3 МБ."
+              );
+
+              avatarFileInput.value = "";
+              return;
+          }
+
+          const reader =
+              new FileReader();
+
+          reader.onload = () => {
+              pendingAvatar =
+                  reader.result;
+
+              showProfileAvatar(
+                  pendingAvatar
+              );
+
+              playSelectionSound();
+          };
+
+          reader.onerror = () => {
+              alert(
+                  "Не удалось загрузить изображение."
+              );
+          };
+
+          reader.readAsDataURL(file);
+      }
+  );
+
+  saveProfileButton.addEventListener(
+      "click",
+      saveProfile
+  );
+
+  document
+      .getElementById(
+          "closeContactModal"
+      )
+      .addEventListener(
+          "click",
+          () => {
+              playCloseSound();
+              closeModal(contactModal);
+          }
+      );
+
+  document
+      .getElementById(
+          "closeProfileModal"
+      )
+      .addEventListener(
+          "click",
+          () => {
+              playCloseSound();
+
+              resetProfileEditor();
+              closeModal(profileModal);
+          }
+      );
+
+  document
+      .getElementById(
+          "closeSettingsModal"
+      )
+      .addEventListener(
+          "click",
+          () => {
+              playCloseSound();
+              closeModal(settingsModal);
+          }
+      );
+
+  modalCallButton.addEventListener(
+      "click",
+      () => {
+          if (selectedContact) {
+              playSoftClick();
+              startCall(selectedContact);
+          }
+      }
+  );
+
+  microphoneButton.addEventListener(
+      "click",
+      toggleMicrophone
+  );
+
+  speakerButton.addEventListener(
+      "click",
+      toggleSpeaker
+  );
+
+  endCallButton.addEventListener(
+      "click",
+      endCall
+  );
+
+  document
+      .querySelectorAll(
+          ".modal-overlay"
+      )
+      .forEach((overlay) => {
+          overlay.addEventListener(
+              "click",
+              (event) => {
+                  if (
+                      event.target !==
+                      overlay
+                  ) {
+                      return;
+                  }
+
+                  playCloseSound();
+
+                  if (
+                      overlay ===
+                      profileModal
+                  ) {
+                      resetProfileEditor();
+                  }
+
+                  closeModal(overlay);
+              }
+          );
+      });
+
+  document.addEventListener(
+      "pointerdown",
+      (event) => {
+          const interactiveElement =
+              event.target.closest(
+                  "button, label.avatar-change-button"
+              );
+
+          if (!interactiveElement) {
+              return;
+          }
+
+          getAudioContext();
+      },
+      {
+          passive: true
+      }
+  );
+
+  document.addEventListener(
+      "visibilitychange",
+      () => {
+          if (
+              document.hidden &&
+              callScreen.classList.contains(
+                  "visible"
+              )
+          ) {
+              stopRingback();
+          }
+      }
+  );
+
+  /* Запуск */
+
+  usernameInput.value =
+      savedUsername;
+
+  showProfileAvatar(savedAvatar);
+
+  validateUsername();
+  updateEncryptionView();
+  updateDisplayMode();
+  resetCallControls();
+  renderContacts(contacts);
+</script>
+</body>
+</html>
