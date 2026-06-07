@@ -622,23 +622,8 @@
           </svg>
         </button>
       </header>
-      <div class="me">
-        <span
-          ><i class="dot"></i><img id="miniAvatar" class="mini" /><b
-            id="myUsername"
-            >Подключение…</b
-          ></span
-        ><button
-          id="logoutBtn"
-          style="border: 0; background: transparent; color: #888"
-        >
-          Выйти
-        </button>
-      </div>
       <section id="contactsList" class="contacts"></section>
-      <div id="emptyState" class="empty">
-        Введите точный юзернейм, например <b>@maslovsky</b>
-      </div>
+      <div id="emptyState" class="empty"></div>
     </main>
     <div id="profileOverlay" class="overlay">
       <div class="sheet">
@@ -802,18 +787,13 @@
         ls = null,
         pendingRemoteCandidates = [],
         disconnectTimer = null,
-        connectionTimer = null,
-        iceRestartAttempts = 0,
-        iceRestartBusy = false,
         startAt = null,
         durTimer = null,
         muted = false,
         speaker = false,
         enc = localStorage.getItem("encryptionEnabled") === "true",
         mode = localStorage.getItem("displayMode") || "emoji";
-      const MAX_ICE_RESTART_ATTEMPTS = 3,
-        DISCONNECT_GRACE_PERIOD = 12000,
-        CONNECTION_TIMEOUT = 30000;
+      const DISCONNECT_GRACE_PERIOD = 15000;
       const clean = (v) =>
           v
             .replace(/^@+/, "")
@@ -911,8 +891,6 @@
           .forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
       }
       function myUI() {
-        $("myUsername").textContent = p ? `@${p.username}` : "Профиль";
-        $("miniAvatar").src = p?.avatar || D;
         $("profileAvatar").src = p?.avatar || D;
         $("profileUsername").value = p ? `@${p.username}` : "";
       }
@@ -1034,171 +1012,83 @@
           clearTimeout(disconnectTimer);
           disconnectTimer = null;
         }
-        if (connectionTimer !== null) {
-          clearTimeout(connectionTimer);
-          connectionTimer = null;
-        }
-      }
-
-      async function restartIceConnection() {
-        if (!pc || !callRef || !u) return;
-        if (pc.signalingState === "closed") return;
-        if (iceRestartBusy) return;
-        if (iceRestartAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
-          $("callStatus").textContent = "Прямое соединение недоступно";
-          return;
-        }
-        iceRestartBusy = true;
-        iceRestartAttempts++;
-        $("callStatus").textContent = `Переподключение ${iceRestartAttempts}/${MAX_ICE_RESTART_ATTEMPTS}…`;
-        try {
-          if (typeof pc.restartIce === "function") pc.restartIce();
-          const restartOffer = await pc.createOffer({ iceRestart: true });
-          await pc.setLocalDescription(restartOffer);
-          await updateDoc(callRef, {
-            restartOffer: { type: restartOffer.type, sdp: restartOffer.sdp },
-            restartBy: u.uid,
-            restartVersion: Date.now(),
-            restartAt: serverTimestamp(),
-          });
-        } catch (e) {
-          console.warn("ICE restart error:", e);
-        } finally {
-          setTimeout(() => {
-            iceRestartBusy = false;
-          }, 3000);
-        }
-      }
-
-      async function handleCallDocument(d) {
-        if (!pc || !d || !u) return;
-
-        if (d.restartOffer && d.restartBy !== u.uid) {
-          const version = d.restartVersion || 0;
-          const lastVersion = pc._lastRestartOfferVersion || 0;
-          if (version > lastVersion && pc.signalingState !== "closed") {
-            pc._lastRestartOfferVersion = version;
-            try {
-              await pc.setRemoteDescription(new RTCSessionDescription(d.restartOffer));
-              await flushRemoteCandidates();
-              const restartAnswer = await pc.createAnswer();
-              await pc.setLocalDescription(restartAnswer);
-              await updateDoc(callRef, {
-                restartAnswer: { type: restartAnswer.type, sdp: restartAnswer.sdp },
-                restartAnswerBy: u.uid,
-                restartAnswerVersion: version,
-                restartAnsweredAt: serverTimestamp(),
-              });
-            } catch (e) {
-              console.warn("Restart offer handle error:", e);
-            }
-          }
-        }
-
-        if (d.restartAnswer && d.restartAnswerBy !== u.uid) {
-          const version = d.restartAnswerVersion || 0;
-          const lastVersion = pc._lastRestartAnswerVersion || 0;
-          if (version > lastVersion && pc.signalingState !== "closed") {
-            pc._lastRestartAnswerVersion = version;
-            try {
-              await pc.setRemoteDescription(new RTCSessionDescription(d.restartAnswer));
-              await flushRemoteCandidates();
-            } catch (e) {
-              console.warn("Restart answer handle error:", e);
-            }
-          }
-        }
       }
 
       function newPC() {
-        let x = new RTCPeerConnection({
+        const x = new RTCPeerConnection({
           iceServers: ICE,
-          iceCandidatePoolSize: 10,
-          bundlePolicy: "max-bundle",
+          iceCandidatePoolSize: 4,
+          bundlePolicy: "balanced",
           rtcpMuxPolicy: "require",
           iceTransportPolicy: "all",
         });
 
-        x.ontrack = async (e) => {
+        x.ontrack = async (event) => {
           const audio = $("remoteAudio");
-          const remoteStream = e.streams && e.streams[0];
-          if (remoteStream) {
-            audio.srcObject = remoteStream;
-          } else {
-            const stream = audio.srcObject instanceof MediaStream ? audio.srcObject : new MediaStream();
-            stream.addTrack(e.track);
-            audio.srcObject = stream;
-          }
+          const stream = event.streams?.[0] || new MediaStream([event.track]);
+          audio.srcObject = stream;
           audio.muted = false;
-          audio.volume = speaker ? 1 : 0.85;
+          audio.volume = 1;
           try {
             await audio.play();
-          } catch (err) {
-            console.warn("Remote audio play blocked:", err);
+          } catch (error) {
+            console.warn("Remote audio playback blocked:", error);
           }
         };
 
-        x.onicecandidateerror = (e) => {
-          console.warn("ICE candidate error:", e.errorCode, e.errorText);
+        x.onicecandidateerror = (event) => {
+          console.warn("ICE candidate error:", event.errorCode, event.errorText);
         };
 
-        x.oniceconnectionstatechange = async () => {
+        x.oniceconnectionstatechange = () => {
           const state = x.iceConnectionState;
           console.log("ICE state:", state);
+
           if (state === "connected" || state === "completed") {
             clearConnectionTimers();
-            iceRestartAttempts = 0;
-            iceRestartBusy = false;
             startDur();
             return;
           }
-          if (state === "checking") {
+
+          if (state === "checking" || state === "new") {
             $("callStatus").textContent = "Соединение…";
             return;
           }
+
           if (state === "disconnected") {
             $("callStatus").textContent = "Переподключение…";
-            if (disconnectTimer !== null) clearTimeout(disconnectTimer);
-            disconnectTimer = setTimeout(async () => {
-              if (pc && pc.iceConnectionState === "disconnected") await restartIceConnection();
+            clearConnectionTimers();
+            disconnectTimer = setTimeout(() => {
+              if (x.iceConnectionState === "disconnected") {
+                $("callStatus").textContent = "Соединение потеряно";
+              }
             }, DISCONNECT_GRACE_PERIOD);
             return;
           }
+
           if (state === "failed") {
-            await restartIceConnection();
+            clearConnectionTimers();
+            $("callStatus").textContent = "Не удалось установить соединение";
           }
         };
 
-        x.onconnectionstatechange = async () => {
+        x.onconnectionstatechange = () => {
           const state = x.connectionState;
           console.log("Peer state:", state);
+
           if (state === "connected") {
             clearConnectionTimers();
-            iceRestartAttempts = 0;
-            iceRestartBusy = false;
             startDur();
-            return;
-          }
-          if (state === "new" || state === "connecting") {
+          } else if (state === "connecting" || state === "new") {
             $("callStatus").textContent = "Соединение…";
-            return;
-          }
-          if (state === "disconnected") {
+          } else if (state === "disconnected") {
             $("callStatus").textContent = "Переподключение…";
-            return;
-          }
-          if (state === "failed") {
-            await restartIceConnection();
-            return;
-          }
-          if (state === "closed") {
+          } else if (state === "failed") {
+            $("callStatus").textContent = "Не удалось установить соединение";
+          } else if (state === "closed") {
             clearConnectionTimers();
           }
         };
-
-        connectionTimer = setTimeout(async () => {
-          if (pc && pc.connectionState !== "connected") await restartIceConnection();
-        }, CONNECTION_TIMEOUT);
 
         return x;
       }
@@ -1215,8 +1105,6 @@
           if (callRef) return;
           showCall(t, "Вызов…");
           pendingRemoteCandidates = [];
-          iceRestartAttempts = 0;
-          iceRestartBusy = false;
           let st = await mic();
           pc = newPC();
           st.getTracks().forEach((q) => pc.addTrack(q, st));
@@ -1246,12 +1134,12 @@
           callUn = onSnapshot(callRef, async (s) => {
             if (!s.exists()) return;
             let d = s.data();
-            await handleCallDocument(d);
-            if (d.answer && !pc.currentRemoteDescription)
+            if (d.answer && !pc.currentRemoteDescription) {
               await pc.setRemoteDescription(
                 new RTCSessionDescription(d.answer),
               );
               await flushRemoteCandidates();
+            }
             if (d.status === "rejected") {
               $("callStatus").textContent = "Вызов отклонён";
               setTimeout(cleanup, 700);
@@ -1273,9 +1161,6 @@
             { username: d.callerUsername, avatar: d.callerAvatar },
             "Соединение…",
           );
-          pendingRemoteCandidates = [];
-          iceRestartAttempts = 0;
-          iceRestartBusy = false;
           let st = await mic();
           pc = newPC();
           st.getTracks().forEach((q) => pc.addTrack(q, st));
@@ -1303,7 +1188,6 @@
               return;
             }
             const d = s.data();
-            await handleCallDocument(d);
             if (d.status === "ended") cleanup();
           });
           inc = null;
@@ -1333,8 +1217,6 @@
         stopDur();
         clearConnectionTimers();
         pendingRemoteCandidates = [];
-        iceRestartAttempts = 0;
-        iceRestartBusy = false;
         callUn?.();
         candUn?.();
         callUn = candUn = null;
@@ -1555,7 +1437,6 @@
       };
       $("loginBtn").onclick = login;
       $("registerBtn").onclick = reg;
-      $("logoutBtn").onclick = () => signOut(auth);
       $("profileBtn").onclick = () => {
         pa = p?.avatar || "";
         myUI();
