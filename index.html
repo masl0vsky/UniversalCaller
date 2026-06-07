@@ -1519,6 +1519,42 @@
       }
     }
 
+
+    /* Аватар профиля: круглый, кнопка камеры выступает наружу */
+    .profile-avatar-wrap {
+      overflow: visible !important;
+    }
+
+    #profileAvatarSlot {
+      width: 96px;
+      height: 96px;
+      overflow: hidden;
+      border-radius: 50%;
+    }
+
+    #profileAvatarSlot img,
+    #profileAvatarSlot .default-avatar {
+      width: 96px !important;
+      height: 96px !important;
+      min-width: 96px !important;
+      border-radius: 50% !important;
+      object-fit: cover;
+    }
+
+    .pick-avatar {
+      right: -5px !important;
+      bottom: -5px !important;
+      z-index: 3;
+      overflow: visible !important;
+    }
+
+    .attachment-progress {
+      margin-left: auto;
+      color: #d8d8d8;
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+
   </style>
 </head>
 
@@ -1606,6 +1642,7 @@
 
         <div id="attachmentPreview" class="attachment-preview">
           <span id="attachmentName"></span>
+          <span id="attachmentProgress" class="attachment-progress"></span>
           <button id="clearAttachmentButton" type="button">×</button>
         </div>
 
@@ -1662,20 +1699,6 @@
       <h2 class="settings-title">Настройки</h2>
 
       <div class="setting-row">
-        <span>Звуки</span>
-        <button
-          id="soundSwitch"
-          class="switch"
-          type="button"
-          role="switch"
-          aria-checked="true"
-          aria-label="Звуки"
-        ></button>
-      </div>
-
-      <div class="settings-divider"></div>
-
-      <div class="setting-row">
         <span>Шифрование</span>
         <button
           id="encryptionSwitch"
@@ -1713,8 +1736,7 @@
         </div>
       </div>
 
-      <button id="logoutButton" class="btn" type="button" style="width:100%;margin-top:18px">Выйти</button>
-      <button id="closeSettingsButton" class="btn primary" type="button" style="width:100%;margin-top:10px">Готово</button>
+      <button id="closeSettingsButton" class="btn primary" type="button" style="width:100%;margin-top:18px">Готово</button>
     </div>
   </div>
 
@@ -1783,14 +1805,24 @@
       arrayUnion
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
+    import {
+      getStorage,
+      ref as storageRef,
+      uploadBytesResumable,
+      getDownloadURL,
+      deleteObject
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+
+
     const firebaseApp = initializeApp(firebaseConfig);
     const auth = getAuth(firebaseApp);
     const db = getFirestore(firebaseApp);
+    const storage = getStorage(firebaseApp);
 
     const $ = (id) => document.getElementById(id);
 
     const USERNAME_PATTERN = /^[a-zA-Z1-9_]{1,16}$/;
-    const MAX_ATTACHMENT_SIZE = 800 * 1024;
+    const MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024;
 
     let currentUser = null;
     let myProfile = null;
@@ -1813,8 +1845,7 @@
     let longPressStart = null;
     let audioContext = null;
 
-    let soundEnabled =
-      localStorage.getItem("messengerSoundEnabled") !== "false";
+    const soundEnabled = true;
 
     let encryptionEnabled =
       localStorage.getItem("encryptionEnabled") === "true";
@@ -1977,8 +2008,7 @@
     }
 
     function updateSoundUi() {
-      $("soundSwitch").classList.toggle("active", soundEnabled);
-      $("soundSwitch").setAttribute("aria-checked", String(soundEnabled));
+      // Звуки всегда включены.
     }
 
     function updateEncryptionUi() {
@@ -2738,9 +2768,10 @@
           ? `<span class="checks">${seen ? "✓✓" : "✓"}</span>`
           : "";
 
-        const media = message.attachment?.data
-          ? renderMessageAttachment(message.attachment, message.id)
-          : "";
+        const media =
+          message.attachment?.url || message.attachment?.data
+            ? renderMessageAttachment(message.attachment, message.id)
+            : "";
 
         const textContent = message.text
           ? `<span class="bubble-text">${escapeHtml(message.text)}</span>`
@@ -2900,14 +2931,15 @@
 
     function renderMessageAttachment(attachment, messageId) {
       const safeName = escapeHtml(attachment.name || "file");
+      const source = attachment.url || attachment.data || "";
 
       if (attachment.type?.startsWith("image/")) {
         return `
           <img
             class="bubble-media image-attachment"
-            src="${attachment.data}"
+            src="${source}"
             alt="${safeName}"
-            data-image-src="${attachment.data}"
+            data-image-src="${source}"
             data-image-name="${safeName}"
             data-message-id="${escapeHtml(messageId)}"
           >
@@ -2915,10 +2947,10 @@
       }
 
       if (attachment.type?.startsWith("video/")) {
-        return `<video class="bubble-media" src="${attachment.data}" controls playsinline></video>`;
+        return `<video class="bubble-media" src="${source}" controls playsinline preload="metadata"></video>`;
       }
 
-      return `<div class="bubble-text">${safeName}</div>`;
+      return `<a class="bubble-text" href="${source}" target="_blank" rel="noopener">${safeName}</a>`;
     }
 
     function openMessageMenu(messageId, clientX = null, clientY = null) {
@@ -3065,6 +3097,20 @@
       closeMessageMenu();
 
       try {
+        if (message.attachment?.storagePath) {
+          await deleteObject(
+            storageRef(
+              storage,
+              message.attachment.storagePath
+            )
+          ).catch((error) => {
+            console.warn(
+              "Не удалось удалить файл из Storage:",
+              error
+            );
+          });
+        }
+
         await deleteDoc(
           doc(db, "chats", activeChatId, "messages", deletingId)
         );
@@ -3167,6 +3213,80 @@
         .replaceAll("'", "&#039;");
     }
 
+    function sanitizeStorageFileName(name) {
+      return String(name || "file")
+        .replace(/[^\w.\-]+/g, "_")
+        .slice(-120);
+    }
+
+    async function uploadSelectedAttachment() {
+      if (!selectedAttachment?.file) {
+        return selectedAttachment;
+      }
+
+      const file = selectedAttachment.file;
+      const uniqueId =
+        crypto.randomUUID?.() ||
+        `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      const path =
+        `chatFiles/${activeChatId}/${currentUser.uid}/` +
+        `${uniqueId}_${sanitizeStorageFileName(file.name)}`;
+
+      const fileReference = storageRef(storage, path);
+
+      const uploadTask = uploadBytesResumable(
+        fileReference,
+        file,
+        {
+          contentType: file.type,
+          customMetadata: {
+            chatId: activeChatId,
+            senderId: currentUser.uid
+          }
+        }
+      );
+
+      const downloadUrl = await new Promise((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress =
+              snapshot.totalBytes > 0
+                ? Math.round(
+                    snapshot.bytesTransferred /
+                    snapshot.totalBytes *
+                    100
+                  )
+                : 0;
+
+            $("attachmentProgress").textContent =
+              `${progress}%`;
+          },
+          reject,
+          async () => {
+            try {
+              resolve(
+                await getDownloadURL(
+                  uploadTask.snapshot.ref
+                )
+              );
+            } catch (error) {
+              reject(error);
+            }
+          }
+        );
+      });
+
+      return {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        url: downloadUrl,
+        storagePath: path
+      };
+    }
+
     async function sendMessage() {
       const text = $("messageInput").value.trim();
 
@@ -3175,6 +3295,11 @@
       $("sendButton").disabled = true;
 
       try {
+        const uploadedAttachment =
+          selectedAttachment
+            ? await uploadSelectedAttachment()
+            : null;
+
         const message = {
           senderId: currentUser.uid,
           text,
@@ -3182,8 +3307,8 @@
           seenBy: [currentUser.uid]
         };
 
-        if (selectedAttachment) {
-          message.attachment = selectedAttachment;
+        if (uploadedAttachment) {
+          message.attachment = uploadedAttachment;
         }
 
         if (replyTarget) {
@@ -3198,12 +3323,12 @@
         await addDoc(collection(db, "chats", activeChatId, "messages"), message);
 
         const listPreview =
-          selectedAttachment
+          uploadedAttachment
             ? (
                 text ||
-                (selectedAttachment.type?.startsWith("image/")
+                (uploadedAttachment.type?.startsWith("image/")
                   ? "Фотография"
-                  : selectedAttachment.type?.startsWith("video/")
+                  : uploadedAttachment.type?.startsWith("video/")
                     ? "Видео"
                     : "Вложение")
               )
@@ -3273,21 +3398,16 @@
     }
 
     function clearAttachment() {
+      if (selectedAttachment?.previewUrl) {
+        URL.revokeObjectURL(selectedAttachment.previewUrl);
+      }
+
       selectedAttachment = null;
       $("fileInput").value = "";
       $("attachmentPreview").classList.remove("visible");
       $("attachmentName").textContent = "";
+      $("attachmentProgress").textContent = "";
       updateSendButton();
-    }
-
-    function readFileAsDataUrl(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
     }
 
     function openProfile() {
@@ -3341,11 +3461,6 @@
     $("closeProfileButton").addEventListener("click", () => closeModal($("profileModal")));
     $("closeSettingsButton").addEventListener("click", () => closeModal($("settingsModal")));
 
-    $("logoutButton").addEventListener("click", async () => {
-      await signOut(auth);
-      closeModal($("settingsModal"));
-    });
-
     $("saveProfileButton").addEventListener("click", async () => {
       try {
         await saveProfile($("profileUsernameInput").value, pendingAvatar);
@@ -3371,13 +3486,6 @@
 
       pendingAvatar = await readFileAsDataUrl(file);
       renderAvatarSlot($("profileAvatarSlot"), { avatar: pendingAvatar }, 96, "profile-avatar");
-      playClick();
-    });
-
-    $("soundSwitch").addEventListener("click", () => {
-      soundEnabled = !soundEnabled;
-      localStorage.setItem("messengerSoundEnabled", String(soundEnabled));
-      updateSoundUi();
       playClick();
     });
 
@@ -3504,34 +3612,43 @@
       }
     });
 
-    $("fileInput").addEventListener("change", async () => {
+    $("fileInput").addEventListener("change", () => {
       const file = $("fileInput").files[0];
+
       if (!file) return;
 
       if (file.size > MAX_ATTACHMENT_SIZE) {
-        alert("Файл слишком большой. Для Firestore выбери фото или видео до 800 КБ.");
+        alert("Файл слишком большой. Максимальный размер — 50 МБ.");
         $("fileInput").value = "";
         return;
       }
 
-      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      if (
+        !file.type.startsWith("image/") &&
+        !file.type.startsWith("video/")
+      ) {
         alert("Можно прикрепить только фото или видео.");
         $("fileInput").value = "";
         return;
       }
 
       selectedAttachment = {
+        file,
         name: file.name,
         type: file.type,
         size: file.size,
-        data: await readFileAsDataUrl(file)
+        previewUrl: URL.createObjectURL(file)
       };
 
-      $("attachmentName").textContent = file.type.startsWith("image/")
-        ? "Фото готово к отправке"
-        : "Видео готово к отправке";
+      const megabytes =
+        (file.size / 1024 / 1024).toFixed(1);
 
+      $("attachmentName").textContent =
+        `${file.type.startsWith("image/") ? "Фото" : "Видео"} · ${megabytes} МБ`;
+
+      $("attachmentProgress").textContent = "";
       $("attachmentPreview").classList.add("visible");
+
       updateSendButton();
       playClick();
     });
