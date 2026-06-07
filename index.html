@@ -1521,6 +1521,7 @@
         let currentUser = null;
         let myProfile = null;
         let pendingAvatar = "";
+        let registrationInProgress = false;
 
         let presenceTimer = null;
         let incomingUnsubscribe = null;
@@ -2357,7 +2358,11 @@
         }
 
         async function registerUser() {
+            registrationInProgress = true;
+
             try {
+                showHint($("authHint"), "");
+
                 const username =
                     cleanUsername($("authUsername").value);
 
@@ -2376,17 +2381,50 @@
                     credential.user;
 
                 await saveProfile(username, "");
+
+                const profileSnapshot =
+                    await getDoc(doc(db, "users", currentUser.uid));
+
+                myProfile =
+                    profileSnapshot.exists()
+                        ? profileSnapshot.data()
+                        : null;
+
+                if (!myProfile) {
+                    throw new Error("Профиль не был создан. Проверь Firestore Rules.");
+                }
+
+                updateMyUi();
+
+                $("authScreen").classList.add("hidden");
+
+                await sendHeartbeat();
+
+                clearInterval(presenceTimer);
+
+                presenceTimer =
+                    window.setInterval(sendHeartbeat, 30000);
+
+                listenIncomingCalls();
             } catch (error) {
                 showHint(
                     $("authHint"),
                     error.message,
                     true
                 );
+
+                if (currentUser && !myProfile) {
+                    await signOut(auth).catch(() => {});
+                }
+            } finally {
+                registrationInProgress = false;
             }
         }
 
         async function loginUser() {
             try {
+                showHint($("authHint"), "");
+
                 await signInWithEmailAndPassword(
                     auth,
                     $("authEmail").value.trim(),
@@ -2417,8 +2455,6 @@
                 return;
             }
 
-            $("authScreen").classList.add("hidden");
-
             const profileSnapshot =
                 await getDoc(doc(db, "users", user.uid));
 
@@ -2428,9 +2464,24 @@
                     : null;
 
             if (!myProfile) {
+                if (registrationInProgress) {
+                    return;
+                }
+
+                $("authScreen").classList.remove("hidden");
+
+                showHint(
+                    $("authHint"),
+                    "Профиль не найден. Зарегистрируйся заново или проверь Firestore Rules.",
+                    true
+                );
+
                 await signOut(auth);
+
                 return;
             }
+
+            $("authScreen").classList.add("hidden");
 
             updateMyUi();
 
