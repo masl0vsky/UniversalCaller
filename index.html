@@ -19,7 +19,7 @@
       --white: #eeeeee;
       --danger: #e53935;
       --ok: #9fd2ad;
-      --bubble-me: #eeeeee;
+      --bubble-me: #d7d7d7;
       --bubble-me-text: #111111;
       --bubble-other: #222222;
       --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
@@ -1610,17 +1610,39 @@
     }
 
     .default-avatar {
+      position: relative;
+      display: grid;
+      place-items: center;
       overflow: hidden;
       color: #ffffff;
-      font-weight: 800;
-      letter-spacing: -.02em;
+      font-weight: 650;
+      letter-spacing: 0;
       text-transform: uppercase;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.12),
+        inset 0 -18px 30px rgba(0,0,0,.24);
+    }
+
+    .default-avatar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(to bottom, rgba(255,255,255,.10), rgba(0,0,0,.34));
+      pointer-events: none;
     }
 
     .default-avatar-letter {
-      transform: translateY(-1px);
-      font-size: .46em;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      transform: none;
+      font-size: .42em;
+      font-weight: 650;
       line-height: 1;
     }
 
@@ -1663,6 +1685,69 @@
       width: 100%;
       accent-color: var(--white);
     }
+
+
+    /* Финальные визуальные правки: серые наши сообщения, красивые галочки, центрированные аватары */
+    .message-row.me .bubble {
+      background: #d7d7d7 !important;
+      color: #111111 !important;
+    }
+
+    .checks {
+      position: relative !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      width: 16px !important;
+      min-width: 16px !important;
+      height: 12px !important;
+      margin-left: 3px !important;
+      letter-spacing: 0 !important;
+      transform: translateY(1px) !important;
+      color: #79d66b !important;
+      font-size: 12px !important;
+      font-weight: 800 !important;
+      line-height: 1 !important;
+      white-space: nowrap !important;
+      vertical-align: baseline !important;
+    }
+
+    .checks span {
+      position: absolute;
+      top: 0;
+      display: block;
+      line-height: 1;
+    }
+
+    .checks-one span {
+      left: 5px;
+    }
+
+    .checks-seen span:first-child {
+      left: 2px;
+    }
+
+    .checks-seen span:last-child {
+      left: 7px;
+    }
+
+    .default-avatar {
+      display: grid !important;
+      place-items: center !important;
+      background-image: linear-gradient(to bottom, rgba(255,255,255,.08), rgba(0,0,0,.28)) !important;
+    }
+
+    .default-avatar-letter {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+      height: 100% !important;
+      transform: translateY(0) !important;
+      font-weight: 650 !important;
+      line-height: 1 !important;
+    }
+
 
   </style>
 </head>
@@ -1956,7 +2041,7 @@
       const color = avatarColor(clean);
 
       return `
-        <div class="default-avatar ${className}" style="width:${size}px;height:${size}px;min-width:${size}px;flex-basis:${size}px;background:${color};font-size:${size}px">
+        <div class="default-avatar ${className}" style="width:${size}px;height:${size}px;min-width:${size}px;flex-basis:${size}px;background-color:${color};font-size:${size}px">
           <span class="default-avatar-letter">${letter}</span>
         </div>
       `;
@@ -2502,7 +2587,7 @@
             <div class="chat-list-preview">${escapeHtml(chat.lastMessage || "Диалог")}</div>
           </div>
           <div class="chat-list-time">
-            ${isOwnLast ? '<span class="checks">✓✓</span>' : ''}
+            ${isOwnLast ? '<span class="checks checks-seen"><span>✓</span><span>✓</span></span>' : ''}
             ${formatListTime(chat.updatedAt)}
           </div>
         `;
@@ -2856,7 +2941,9 @@
           message.seenBy.includes(activePeer.uid);
 
         const checks = isMine
-          ? `<span class="checks">${seen ? "✓✓" : "✓"}</span>`
+          ? seen
+            ? `<span class="checks checks-seen"><span>✓</span><span>✓</span></span>`
+            : `<span class="checks checks-one"><span>✓</span></span>`
           : "";
 
         const media = message.attachment?.data
