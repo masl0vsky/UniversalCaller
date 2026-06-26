@@ -1548,6 +1548,133 @@
       overflow: visible !important;
     }
 
+
+    /* Новые настройки: тема, звуки, узоры, буквенные аватары */
+    body.light-theme {
+      --bg: #f2f2f2;
+      --panel: #ffffff;
+      --panel2: #eeeeee;
+      --panel3: #e5e5e5;
+      --line: #d7d7d7;
+      --text: #151515;
+      --muted: #777777;
+      --soft: #8a8a8a;
+      --white: #111111;
+      --bubble-me: #111111;
+      --bubble-me-text: #ffffff;
+      --bubble-other: #ffffff;
+      --shadow: 0 14px 34px rgba(0, 0, 0, 0.10);
+    }
+
+    body.light-theme .topbar,
+    body.light-theme .chat-header,
+    body.light-theme .composer-wrap {
+      background: rgba(242,242,242,.94);
+    }
+
+    body.light-theme .search input,
+    body.light-theme .field,
+    body.light-theme .composer,
+    body.light-theme .modal,
+    body.light-theme .auth-card {
+      background: #ffffff;
+      border-color: #dddddd;
+    }
+
+    body.light-theme .modal-overlay {
+      background: rgba(0,0,0,.22);
+    }
+
+    body.light-theme .display-options {
+      background: #e5e5e5;
+    }
+
+    body.light-theme .display-option.active,
+    body.light-theme .btn.primary,
+    body.light-theme .send-button {
+      background: #111111;
+      color: #ffffff;
+    }
+
+    body.light-theme .chat-list-name,
+    body.light-theme .user-card-name,
+    body.light-theme .composer-reply-name {
+      color: #151515;
+    }
+
+    body.light-theme .icon-button,
+    body.light-theme .back-button,
+    body.light-theme .chat-header-avatar-button,
+    body.light-theme .pick-avatar {
+      color: #151515;
+    }
+
+    .default-avatar {
+      overflow: hidden;
+      color: #ffffff;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      text-transform: uppercase;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+
+    .default-avatar-letter {
+      transform: translateY(-1px);
+      font-size: .46em;
+      line-height: 1;
+    }
+
+    .chat-screen.patterns-on .messages {
+      background-image:
+        radial-gradient(circle at 18px 18px, var(--pattern-color) 0 1.25px, transparent 1.35px),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.115' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 38h28v20H22zM94 25c16 6 26 17 30 33-18-4-30-14-36-30M159 39l17 17M176 39l-17 17M31 101c14-15 31-15 45 0M33 118h41M119 92h38v28h-38zM128 100h20M128 111h14M181 91c13 0 22 9 22 22s-9 22-22 22-22-9-22-22 9-22 22-22zM176 111l5 5 11-13M28 167c14-15 34-15 48 0v24H28zM96 161l16 27 16-27M154 158h37v27h-37zM164 168h17M168 179h9M20 19l8-8 8 8-8 8zM81 64l8-8 8 8-8 8zM192 15l7-7 7 7-7 7zM202 174l7-7 7 7-7 7zM67 201l7-7 7 7-7 7zM17 203l6-6 6 6-6 6z'/%3E%3Ccircle cx='65' cy='21' r='4'/%3E%3Ccircle cx='198' cy='70' r='4'/%3E%3Ccircle cx='104' cy='132' r='4'/%3E%3Ccircle cx='18' cy='139' r='3'/%3E%3Ccircle cx='139' cy='204' r='4'/%3E%3Cpath d='M54 77h22M166 72h26M67 147h20M113 76h17M23 73h8M142 146h9M197 144h8'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: 58px 58px, 220px 220px;
+      background-color: var(--bg);
+    }
+
+    body:not(.light-theme) .chat-screen.patterns-on .messages {
+      --pattern-color: rgba(255,255,255,.075);
+    }
+
+    body.light-theme .chat-screen.patterns-on .messages {
+      --pattern-color: rgba(0,0,0,.055);
+      background-image:
+        radial-gradient(circle at 18px 18px, var(--pattern-color) 0 1.25px, transparent 1.35px),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23000000' stroke-opacity='.105' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 38h28v20H22zM94 25c16 6 26 17 30 33-18-4-30-14-36-30M159 39l17 17M176 39l-17 17M31 101c14-15 31-15 45 0M33 118h41M119 92h38v28h-38zM128 100h20M128 111h14M181 91c13 0 22 9 22 22s-9 22-22 22-22-9-22-22 9-22 22-22zM176 111l5 5 11-13M28 167c14-15 34-15 48 0v24H28zM96 161l16 27 16-27M154 158h37v27h-37zM164 168h17M168 179h9M20 19l8-8 8 8-8 8zM81 64l8-8 8 8-8 8zM192 15l7-7 7 7-7 7zM202 174l7-7 7 7-7 7zM67 201l7-7 7 7-7 7zM17 203l6-6 6 6-6 6z'/%3E%3Ccircle cx='65' cy='21' r='4'/%3E%3Ccircle cx='198' cy='70' r='4'/%3E%3Ccircle cx='104' cy='132' r='4'/%3E%3Ccircle cx='18' cy='139' r='3'/%3E%3Ccircle cx='139' cy='204' r='4'/%3E%3Cpath d='M54 77h22M166 72h26M67 147h20M113 76h17M23 73h8M142 146h9M197 144h8'/%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .chat-screen.patterns-off .messages {
+      background-image: none;
+    }
+
+    .range-setting {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      padding: 11px 0;
+    }
+
+    .range-setting-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .range-value {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .range-input {
+      width: 100%;
+      accent-color: var(--white);
+    }
+
   </style>
 </head>
 
@@ -1572,7 +1699,7 @@
           <circle cx="10.5" cy="10.5" r="5.8"></circle>
           <path d="M15 15 20 20"></path>
         </svg>
-        <input id="searchInput" type="search" placeholder="Поиск по @username" autocomplete="off">
+        <input id="searchInput" type="search" placeholder="Поиск пользователя" autocomplete="off">
       </div>
 
       <button id="settingsButton" class="icon-button" type="button" aria-label="Настройки">
@@ -1690,48 +1817,37 @@
       <div class="handle"></div>
       <h2 class="settings-title">Настройки</h2>
 
+      <div class="range-setting">
+        <div class="range-setting-top">
+          <span>Звуки</span>
+          <span id="soundValue" class="range-value">75%</span>
+        </div>
+        <input id="soundSlider" class="range-input" type="range" min="0" max="100" step="1" value="75">
+      </div>
+
       <div class="setting-row">
-        <span>Шифрование</span>
+        <span>Узоры</span>
         <button
-          id="encryptionSwitch"
+          id="patternsSwitch"
           class="switch"
           type="button"
           role="switch"
-          aria-checked="false"
-          aria-label="Шифрование"
+          aria-checked="true"
+          aria-label="Узоры"
         ></button>
       </div>
 
-      <div id="encryptionOptions" class="encryption-options">
-        <div class="settings-divider"></div>
-
-        <div class="display-setting">
-          <span>Отображение</span>
-
-          <div class="display-options">
-            <button
-              class="display-option active"
-              type="button"
-              data-display-mode="emoji"
-            >
-              Смайлики
-            </button>
-
-            <button
-              class="display-option"
-              type="button"
-              data-display-mode="code"
-            >
-              Цифровой код
-            </button>
-          </div>
+      <div class="display-setting">
+        <span>Тема</span>
+        <div class="display-options">
+          <button class="display-option active" type="button" data-theme-mode="dark">Темная</button>
+          <button class="display-option" type="button" data-theme-mode="light">Светлая</button>
         </div>
       </div>
 
       <button id="closeSettingsButton" class="btn primary" type="button" style="width:100%;margin-top:18px">Готово</button>
     </div>
   </div>
-
 
   <div id="messageMenuOverlay" class="message-menu-overlay">
     <div class="message-menu">
@@ -1827,34 +1943,35 @@
     let longPressStart = null;
     let audioContext = null;
 
-    const soundEnabled = true;
+    let soundLevel = Number(localStorage.getItem("soundLevel") ?? "75") / 100;
+    let patternsEnabled = localStorage.getItem("patternsEnabled") !== "false";
+    let themeMode = localStorage.getItem("themeMode") || "dark";
 
-    let encryptionEnabled =
-      localStorage.getItem("encryptionEnabled") === "true";
+    function avatarColor(username = "") {
+      const colors = [
+        "#7c3aed", "#2563eb", "#0891b2", "#059669",
+        "#65a30d", "#ca8a04", "#ea580c", "#dc2626",
+        "#db2777", "#9333ea", "#475569", "#0f766e"
+      ];
 
-    let displayMode =
-      localStorage.getItem("displayMode") || "emoji";
+      let hash = 0;
+      const value = String(username || "user");
 
-    function defaultAvatarSvg(size = 30, className = "") {
+      for (let i = 0; i < value.length; i++) {
+        hash = value.charCodeAt(i) + ((hash << 5) - hash);
+      }
+
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    function defaultAvatarSvg(size = 30, className = "", username = "") {
+      const clean = String(username || "П").replace(/^@+/, "").trim();
+      const letter = escapeHtml((clean[0] || "П").toUpperCase());
+      const color = avatarColor(clean);
+
       return `
-        <div class="default-avatar ${className}" style="width:${size}px;height:${size}px;min-width:${size}px;flex-basis:${size}px">
-          <svg viewBox="0 0 512 512" aria-hidden="true">
-            <path
-              d="M344 144c-3.92 52.87-43.87 96-88 96s-84.08-43.13-88-96c-4-55.43 35.54-96 88-96s92 40.57 88 96Z"
-              fill="none"
-              stroke="#ffffff"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="32"
-            />
-            <path
-              d="M256 304c-87 0-160 44.79-160 100v24a36 36 0 0 0 36 36h248a36 36 0 0 0 36-36v-24c0-55.21-73-100-160-100Z"
-              fill="none"
-              stroke="#ffffff"
-              stroke-miterlimit="10"
-              stroke-width="32"
-            />
-          </svg>
+        <div class="default-avatar ${className}" style="width:${size}px;height:${size}px;min-width:${size}px;flex-basis:${size}px;background:${color};font-size:${size}px">
+          <span class="default-avatar-letter">${letter}</span>
         </div>
       `;
     }
@@ -1864,7 +1981,7 @@
         return `<img class="${className}" src="${profile.avatar}" alt="">`;
       }
 
-      return defaultAvatarSvg(size, className);
+      return defaultAvatarSvg(size, className, profile?.username);
     }
 
     function renderAvatarSlot(slot, profile, size = 50, className = "avatar") {
@@ -1929,7 +2046,7 @@
     }
 
     function getAudioContext() {
-      if (!soundEnabled) return null;
+      if (soundLevel <= 0) return null;
 
       if (!audioContext) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -1961,7 +2078,7 @@
       }
 
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(volume, start + Math.min(0.018, duration / 3));
+      gain.gain.exponentialRampToValueAtTime(volume * soundLevel, start + Math.min(0.018, duration / 3));
       gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
       oscillator.connect(gain);
@@ -1990,33 +2107,50 @@
     }
 
     function updateSoundUi() {
-      // Звуки всегда включены.
+      const slider = $("soundSlider");
+      const value = $("soundValue");
+
+      if (!slider || !value) return;
+
+      const percent = Math.round(soundLevel * 100);
+      slider.value = String(percent);
+      value.textContent = `${percent}%`;
     }
 
-    function updateEncryptionUi() {
-      $("encryptionSwitch").classList.toggle(
-        "active",
-        encryptionEnabled
-      );
-
-      $("encryptionSwitch").setAttribute(
-        "aria-checked",
-        String(encryptionEnabled)
-      );
-
-      $("encryptionOptions").classList.toggle(
-        "visible",
-        encryptionEnabled
+    function applyTheme() {
+      document.body.classList.toggle("light-theme", themeMode === "light");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute(
+        "content",
+        themeMode === "light" ? "#f2f2f2" : "#101010"
       );
 
       document
-        .querySelectorAll(".display-option")
+        .querySelectorAll("[data-theme-mode]")
         .forEach((button) => {
           button.classList.toggle(
             "active",
-            button.dataset.displayMode === displayMode
+            button.dataset.themeMode === themeMode
           );
         });
+    }
+
+    function updatePatternsUi() {
+      const screen = $("chatScreen");
+      const button = $("patternsSwitch");
+
+      screen?.classList.toggle("patterns-on", patternsEnabled);
+      screen?.classList.toggle("patterns-off", !patternsEnabled);
+
+      if (button) {
+        button.classList.toggle("active", patternsEnabled);
+        button.setAttribute("aria-checked", String(patternsEnabled));
+      }
+    }
+
+    function updateSettingsUi() {
+      updateSoundUi();
+      applyTheme();
+      updatePatternsUi();
     }
 
     async function reserveUsername(uid, username, oldUsername = "") {
@@ -3311,8 +3445,7 @@
     }
 
     function openSettings() {
-      updateSoundUi();
-      updateEncryptionUi();
+      updateSettingsUi();
       openModal($("settingsModal"));
     }
 
@@ -3381,38 +3514,33 @@
       playClick();
     });
 
-    $("encryptionSwitch").addEventListener("click", () => {
-      encryptionEnabled = !encryptionEnabled;
+    $("soundSlider").addEventListener("input", () => {
+      soundLevel = Number($("soundSlider").value) / 100;
+      localStorage.setItem("soundLevel", String(Math.round(soundLevel * 100)));
+      updateSoundUi();
+    });
 
-      localStorage.setItem(
-        "encryptionEnabled",
-        String(encryptionEnabled)
-      );
-
-      updateEncryptionUi();
+    $("patternsSwitch").addEventListener("click", () => {
+      patternsEnabled = !patternsEnabled;
+      localStorage.setItem("patternsEnabled", String(patternsEnabled));
+      updatePatternsUi();
       playClick();
     });
 
     document
-      .querySelectorAll(".display-option")
+      .querySelectorAll("[data-theme-mode]")
       .forEach((button) => {
         button.addEventListener("click", () => {
-          const selectedMode =
-            button.dataset.displayMode;
+          const selectedMode = button.dataset.themeMode;
 
-          if (displayMode === selectedMode) {
+          if (themeMode === selectedMode) {
             playClick();
             return;
           }
 
-          displayMode = selectedMode;
-
-          localStorage.setItem(
-            "displayMode",
-            displayMode
-          );
-
-          updateEncryptionUi();
+          themeMode = selectedMode;
+          localStorage.setItem("themeMode", themeMode);
+          applyTheme();
           playClick();
         });
       });
@@ -3552,8 +3680,8 @@
       }
     }, { passive: true });
 
-    updateSoundUi();
-    updateEncryptionUi();
+    updateSettingsUi();
   </script>
 </body>
 </html>
+https://masl0vsky.github.io/UniversalCaller/
