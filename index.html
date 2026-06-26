@@ -1625,22 +1625,11 @@
     }
 
     .chat-screen.patterns-on .messages {
-      background-image:
-        radial-gradient(circle at 18px 18px, var(--pattern-color) 0 1.25px, transparent 1.35px),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.115' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 38h28v20H22zM94 25c16 6 26 17 30 33-18-4-30-14-36-30M159 39l17 17M176 39l-17 17M31 101c14-15 31-15 45 0M33 118h41M119 92h38v28h-38zM128 100h20M128 111h14M181 91c13 0 22 9 22 22s-9 22-22 22-22-9-22-22 9-22 22-22zM176 111l5 5 11-13M28 167c14-15 34-15 48 0v24H28zM96 161l16 27 16-27M154 158h37v27h-37zM164 168h17M168 179h9M20 19l8-8 8 8-8 8zM81 64l8-8 8 8-8 8zM192 15l7-7 7 7-7 7zM202 174l7-7 7 7-7 7zM67 201l7-7 7 7-7 7zM17 203l6-6 6 6-6 6z'/%3E%3Ccircle cx='65' cy='21' r='4'/%3E%3Ccircle cx='198' cy='70' r='4'/%3E%3Ccircle cx='104' cy='132' r='4'/%3E%3Ccircle cx='18' cy='139' r='3'/%3E%3Ccircle cx='139' cy='204' r='4'/%3E%3Cpath d='M54 77h22M166 72h26M67 147h20M113 76h17M23 73h8M142 146h9M197 144h8'/%3E%3C/g%3E%3C/svg%3E");
-      background-size: 58px 58px, 220px 220px;
+      background-image: url("./Папка/images/Screen.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       background-color: var(--bg);
-    }
-
-    body:not(.light-theme) .chat-screen.patterns-on .messages {
-      --pattern-color: rgba(255,255,255,.075);
-    }
-
-    body.light-theme .chat-screen.patterns-on .messages {
-      --pattern-color: rgba(0,0,0,.055);
-      background-image:
-        radial-gradient(circle at 18px 18px, var(--pattern-color) 0 1.25px, transparent 1.35px),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23000000' stroke-opacity='.105' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 38h28v20H22zM94 25c16 6 26 17 30 33-18-4-30-14-36-30M159 39l17 17M176 39l-17 17M31 101c14-15 31-15 45 0M33 118h41M119 92h38v28h-38zM128 100h20M128 111h14M181 91c13 0 22 9 22 22s-9 22-22 22-22-9-22-22 9-22 22-22zM176 111l5 5 11-13M28 167c14-15 34-15 48 0v24H28zM96 161l16 27 16-27M154 158h37v27h-37zM164 168h17M168 179h9M20 19l8-8 8 8-8 8zM81 64l8-8 8 8-8 8zM192 15l7-7 7 7-7 7zM202 174l7-7 7 7-7 7zM67 201l7-7 7 7-7 7zM17 203l6-6 6 6-6 6z'/%3E%3Ccircle cx='65' cy='21' r='4'/%3E%3Ccircle cx='198' cy='70' r='4'/%3E%3Ccircle cx='104' cy='132' r='4'/%3E%3Ccircle cx='18' cy='139' r='3'/%3E%3Ccircle cx='139' cy='204' r='4'/%3E%3Cpath d='M54 77h22M166 72h26M67 147h20M113 76h17M23 73h8M142 146h9M197 144h8'/%3E%3C/g%3E%3C/svg%3E");
     }
 
     .chat-screen.patterns-off .messages {
@@ -1817,12 +1806,16 @@
       <div class="handle"></div>
       <h2 class="settings-title">Настройки</h2>
 
-      <div class="range-setting">
-        <div class="range-setting-top">
-          <span>Звуки</span>
-          <span id="soundValue" class="range-value">75%</span>
-        </div>
-        <input id="soundSlider" class="range-input" type="range" min="0" max="100" step="1" value="75">
+      <div class="setting-row">
+        <span>Звуки</span>
+        <button
+          id="soundSwitch"
+          class="switch"
+          type="button"
+          role="switch"
+          aria-checked="true"
+          aria-label="Звуки"
+        ></button>
       </div>
 
       <div class="setting-row">
@@ -1835,14 +1828,6 @@
           aria-checked="true"
           aria-label="Узоры"
         ></button>
-      </div>
-
-      <div class="display-setting">
-        <span>Тема</span>
-        <div class="display-options">
-          <button class="display-option active" type="button" data-theme-mode="dark">Темная</button>
-          <button class="display-option" type="button" data-theme-mode="light">Светлая</button>
-        </div>
       </div>
 
       <button id="closeSettingsButton" class="btn primary" type="button" style="width:100%;margin-top:18px">Готово</button>
@@ -1943,9 +1928,10 @@
     let longPressStart = null;
     let audioContext = null;
 
-    let soundLevel = Number(localStorage.getItem("soundLevel") ?? "75") / 100;
+    let soundsEnabled = localStorage.getItem("soundsEnabled") !== "false";
+    let soundLevel = soundsEnabled ? 1 : 0;
     let patternsEnabled = localStorage.getItem("patternsEnabled") !== "false";
-    let themeMode = localStorage.getItem("themeMode") || "dark";
+    let themeMode = "dark";
 
     function avatarColor(username = "") {
       const colors = [
@@ -2107,31 +2093,20 @@
     }
 
     function updateSoundUi() {
-      const slider = $("soundSlider");
-      const value = $("soundValue");
+      const button = $("soundSwitch");
 
-      if (!slider || !value) return;
+      if (!button) return;
 
-      const percent = Math.round(soundLevel * 100);
-      slider.value = String(percent);
-      value.textContent = `${percent}%`;
+      button.classList.toggle("active", soundsEnabled);
+      button.setAttribute("aria-checked", String(soundsEnabled));
+      soundLevel = soundsEnabled ? 1 : 0;
     }
 
     function applyTheme() {
-      document.body.classList.toggle("light-theme", themeMode === "light");
-      document.querySelector('meta[name="theme-color"]')?.setAttribute(
-        "content",
-        themeMode === "light" ? "#f2f2f2" : "#101010"
-      );
-
-      document
-        .querySelectorAll("[data-theme-mode]")
-        .forEach((button) => {
-          button.classList.toggle(
-            "active",
-            button.dataset.themeMode === themeMode
-          );
-        });
+      themeMode = "dark";
+      localStorage.setItem("themeMode", "dark");
+      document.body.classList.remove("light-theme");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#101010");
     }
 
     function updatePatternsUi() {
@@ -3514,10 +3489,11 @@
       playClick();
     });
 
-    $("soundSlider").addEventListener("input", () => {
-      soundLevel = Number($("soundSlider").value) / 100;
-      localStorage.setItem("soundLevel", String(Math.round(soundLevel * 100)));
+    $("soundSwitch").addEventListener("click", () => {
+      soundsEnabled = !soundsEnabled;
+      localStorage.setItem("soundsEnabled", String(soundsEnabled));
       updateSoundUi();
+      playClick();
     });
 
     $("patternsSwitch").addEventListener("click", () => {
@@ -3526,24 +3502,6 @@
       updatePatternsUi();
       playClick();
     });
-
-    document
-      .querySelectorAll("[data-theme-mode]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          const selectedMode = button.dataset.themeMode;
-
-          if (themeMode === selectedMode) {
-            playClick();
-            return;
-          }
-
-          themeMode = selectedMode;
-          localStorage.setItem("themeMode", themeMode);
-          applyTheme();
-          playClick();
-        });
-      });
 
     $("backButton").addEventListener("click", closeChat);
 
@@ -3684,4 +3642,3 @@
   </script>
 </body>
 </html>
-https://masl0vsky.github.io/UniversalCaller/
