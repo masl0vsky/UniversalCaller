@@ -601,6 +601,18 @@
       flex-direction: column;
       gap: 8px;
       overscroll-behavior: contain;
+      overflow-anchor: none;
+      scroll-behavior: auto;
+    }
+
+    .messages.opening-stabilize {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .messages.opening-ready {
+      opacity: 1;
+      transition: opacity .08s ease;
     }
 
     .messages::-webkit-scrollbar {
@@ -1051,11 +1063,18 @@
       opacity: 1;
     }
 
-    .media-viewer-image {
+    .media-viewer-image,
+    .media-viewer-video {
       max-width: 100%;
       max-height: calc(100dvh - 120px);
       object-fit: contain;
       border-radius: 12px;
+      background: #000000;
+    }
+
+    .media-viewer-video {
+      width: min(100%, 720px);
+      outline: 0;
     }
 
     .media-viewer-top {
@@ -1082,8 +1101,65 @@
       text-decoration: none;
     }
 
-    .bubble-media.image-attachment {
+    .media-viewer-save-button {
+      width: 42px;
+      min-width: 42px;
+      padding: 0;
+      border-radius: 50%;
+    }
+
+    .media-viewer-save-button svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble-media.image-attachment,
+    .video-preview-button {
       cursor: zoom-in;
+    }
+
+    .video-preview-button {
+      position: relative;
+      display: block;
+      width: 100%;
+      max-width: 250px;
+      padding: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #111111;
+      line-height: 0;
+    }
+
+    .video-preview-button .bubble-media {
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+
+    .video-play-badge {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,.45);
+      color: #ffffff;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    }
+
+    .video-play-badge svg {
+      width: 25px;
+      height: 25px;
+      margin-left: 3px;
+      fill: currentColor;
     }
 
 
@@ -2122,9 +2198,16 @@
   <div id="mediaViewer" class="media-viewer">
     <div class="media-viewer-top">
       <button id="closeMediaViewer" class="media-viewer-button" type="button">Закрыть</button>
-      <a id="saveMediaButton" class="media-viewer-button" href="#" download>Сохранить</a>
+      <a id="saveMediaButton" class="media-viewer-button media-viewer-save-button" href="#" download aria-label="Сохранить">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v10"></path>
+          <path d="M7.5 9.5 12 14l4.5-4.5"></path>
+          <path d="M5 19h14"></path>
+        </svg>
+      </a>
     </div>
     <img id="mediaViewerImage" class="media-viewer-image" src="" alt="">
+    <video id="mediaViewerVideo" class="media-viewer-video hidden" controls playsinline></video>
   </div>
 
   <script type="module">
@@ -2211,6 +2294,9 @@
     let replyTarget = null;
     let currentMessages = new Map();
     let lastRenderedMessageIds = [];
+    let lastRenderedMessagesSignature = "";
+    let openingRevealTimer = null;
+    let openingChatIdForStableRender = null;
     let contextMessageId = null;
     let longPressTimer = null;
     let longPressStart = null;
@@ -3187,11 +3273,19 @@
       const openingChatId = activeChatId;
       const openingPeerUid = peer.uid;
 
+      const messagesContainer = $("messages");
+      window.clearTimeout(openingRevealTimer);
+      openingChatIdForStableRender = openingChatId;
+      messagesContainer.classList.remove("opening-ready");
+      messagesContainer.classList.add("opening-stabilize");
+      messagesContainer.style.scrollBehavior = "auto";
+
       $("chatScreen").classList.add("visible");
       document.body.style.overflow = "hidden";
 
-      $("messages").innerHTML = "";
+      messagesContainer.innerHTML = "";
       lastRenderedMessageIds = [];
+      lastRenderedMessagesSignature = "";
       updateScrollDownButton();
       $("chatUsername").textContent = peer.username;
       renderAvatarSlot(
@@ -3320,10 +3414,15 @@
       activeMessagesUnsubscribe = null;
       activePeerUnsubscribe = null;
 
+      window.clearTimeout(openingRevealTimer);
+      openingChatIdForStableRender = null;
+      $("messages").classList.remove("opening-stabilize", "opening-ready");
+
       activePeer = null;
       activeChatId = null;
       currentMessages.clear();
       lastRenderedMessageIds = [];
+      lastRenderedMessagesSignature = "";
       updateScrollDownButton();
       clearReply();
       closeMessageMenu();
@@ -3402,8 +3501,57 @@
       button.classList.toggle("visible", visible);
     }
 
+    function messageRenderSignature(messages) {
+      return messages.map((message) => {
+        const attachment = message.attachment || {};
+        const seenBy = Array.isArray(message.seenBy) ? message.seenBy.join(",") : "";
+        const reactions = message.reactions ? JSON.stringify(message.reactions) : "";
+        return [
+          message.id,
+          message.senderId || "",
+          message.text || "",
+          attachment.type || "",
+          attachment.name || "",
+          attachment.data ? attachment.data.length : 0,
+          seenBy,
+          reactions
+        ].join("~");
+      }).join("|");
+    }
+
+    function revealOpeningMessages(chatId) {
+      if (openingChatIdForStableRender !== chatId) return;
+
+      const container = $("messages");
+      const reveal = () => {
+        if (openingChatIdForStableRender !== chatId) return;
+        container.scrollTop = container.scrollHeight;
+        container.classList.remove("opening-stabilize");
+        container.classList.add("opening-ready");
+        openingChatIdForStableRender = null;
+        updateScrollDownButton();
+      };
+
+      window.clearTimeout(openingRevealTimer);
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+        requestAnimationFrame(reveal);
+      });
+    }
+
     function renderMessages(messages) {
       const container = $("messages");
+      const nextSignature = messageRenderSignature(messages);
+
+      if (nextSignature === lastRenderedMessagesSignature && container.children.length) {
+        if (openingChatIdForStableRender && activeChatId === openingChatIdForStableRender) {
+          revealOpeningMessages(openingChatIdForStableRender);
+        }
+        updateScrollDownButton();
+        return;
+      }
+
+      lastRenderedMessagesSignature = nextSignature;
       const wasEmpty = container.children.length === 0;
       const wasNearBottom = isNearChatBottom(190);
       const previousBottomDistance = getBottomDistance();
@@ -3490,7 +3638,6 @@
       const shouldGoBottom = wasEmpty || wasNearBottom || (hasNewMessage && lastMessageIsMine);
 
       if (shouldGoBottom) {
-        /* При первой отрисовке сразу ставим scrollTop в конец до следующего кадра. */
         if (wasEmpty) {
           container.scrollTop = container.scrollHeight;
         }
@@ -3500,6 +3647,10 @@
           container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight - previousBottomDistance);
           updateScrollDownButton();
         });
+      }
+
+      if (openingChatIdForStableRender && activeChatId === openingChatIdForStableRender) {
+        revealOpeningMessages(openingChatIdForStableRender);
       }
     }
 
@@ -3628,7 +3779,21 @@
       }
 
       if (attachment.type?.startsWith("video/")) {
-        return `<video class="bubble-media" src="${attachment.data}" controls playsinline></video>`;
+        return `
+          <button
+            class="video-preview-button"
+            type="button"
+            data-video-src="${attachment.data}"
+            data-video-name="${safeName}"
+            data-message-id="${escapeHtml(messageId)}"
+            aria-label="Открыть видео"
+          >
+            <video class="bubble-media video-attachment" src="${attachment.data}#t=0.1" preload="metadata" muted playsinline></video>
+            <span class="video-play-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+            </span>
+          </button>
+        `;
       }
 
       return `<div class="bubble-text">${safeName}</div>`;
@@ -3840,20 +4005,84 @@
       }
     }
 
-    function openImageViewer(src, name = "image") {
-      $("mediaViewerImage").src = src;
-      $("saveMediaButton").href = src;
-      $("saveMediaButton").download = name || "image";
+    function openMediaViewer(type, src, name = "media") {
+      const image = $("mediaViewerImage");
+      const video = $("mediaViewerVideo");
+      const saveButton = $("saveMediaButton");
+
+      image.classList.toggle("hidden", type !== "image");
+      video.classList.toggle("hidden", type !== "video");
+
+      if (type === "video") {
+        image.src = "";
+        video.src = src;
+        video.currentTime = 0;
+        video.controls = true;
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        image.src = src;
+      }
+
+      saveButton.href = src;
+      saveButton.download = name || (type === "video" ? "video.webm" : "image.jpg");
+      saveButton.dataset.src = src;
+      saveButton.dataset.name = saveButton.download;
       $("mediaViewer").classList.add("visible");
       document.body.style.overflow = "hidden";
     }
 
+    function openImageViewer(src, name = "image") {
+      openMediaViewer("image", src, name);
+    }
+
+    function openVideoViewer(src, name = "video.webm") {
+      openMediaViewer("video", src, name);
+    }
+
     function closeImageViewer() {
+      const video = $("mediaViewerVideo");
       $("mediaViewer").classList.remove("visible");
       $("mediaViewerImage").src = "";
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
 
       if (!$("chatScreen").classList.contains("visible")) {
         document.body.style.overflow = "";
+      }
+    }
+
+    async function forceSaveMedia(event) {
+      event.preventDefault();
+
+      const button = $("saveMediaButton");
+      const src = button.dataset.src || button.href;
+      const name = button.dataset.name || button.download || "media";
+
+      try {
+        const response = await fetch(src);
+        const blob = await response.blob();
+        const file = new File([blob], name, { type: blob.type || "application/octet-stream" });
+
+        if (navigator.canShare?.({ files: [file] }) && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          await navigator.share({ files: [file], title: name });
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        console.warn("Не удалось сохранить через Blob, использую обычную ссылку:", error);
+        window.open(src, "_blank", "noopener");
       }
     }
 
@@ -4499,6 +4728,13 @@
     }, true);
 
     $("messages").addEventListener("loadedmetadata", (event) => {
+      if (event.target?.classList?.contains("video-attachment")) {
+        try {
+          event.target.currentTime = 0.1;
+          event.target.pause();
+        } catch (_) {}
+      }
+
       if (event.target?.classList?.contains("bubble-media") && isNearChatBottom(260)) {
         scrollMessagesToBottom("auto");
       }
@@ -4541,6 +4777,16 @@
     });
 
     $("messages").addEventListener("click", (event) => {
+      const video = event.target.closest(".video-preview-button");
+
+      if (video) {
+        openVideoViewer(
+          video.dataset.videoSrc,
+          video.dataset.videoName || "video.webm"
+        );
+        return;
+      }
+
       const image = event.target.closest(".image-attachment");
 
       if (!image) return;
@@ -4555,6 +4801,8 @@
       "click",
       closeImageViewer
     );
+
+    $("saveMediaButton").addEventListener("click", forceSaveMedia);
 
     $("mediaViewer").addEventListener("click", (event) => {
       if (event.target === $("mediaViewer")) {
