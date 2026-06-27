@@ -1749,6 +1749,25 @@
     }
 
 
+    /* FIX: финальные цвета сообщений и галочек */
+    .message-row.me .bubble {
+      background: #d7d7d7 !important;
+      color: #111111 !important;
+    }
+
+    .message-row.me .meta {
+      color: rgba(0,0,0,.48) !important;
+    }
+
+    .message-row.me .checks-one {
+      color: rgba(0,0,0,.45) !important;
+    }
+
+    .message-row.me .checks-seen,
+    .chat-list-time .checks-seen {
+      color: #ffffff !important;
+    }
+
   </style>
 </head>
 
@@ -1963,7 +1982,7 @@
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     import {
-      getFirestore,
+      initializeFirestore,
       doc,
       getDoc,
       getDocs,
@@ -1985,7 +2004,16 @@
 
     const firebaseApp = initializeApp(firebaseConfig);
     const auth = getAuth(firebaseApp);
-    const db = getFirestore(firebaseApp);
+
+    /*
+     * FIX: на GitHub Pages / некоторых мобильных сетях стандартный
+     * Firestore WebChannel иногда отдаёт первый onSnapshot через 30-60 секунд.
+     * Авто long-polling убирает эту задержку и делает загрузку чата стабильнее.
+     */
+    const db = initializeFirestore(firebaseApp, {
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: false
+    });
 
     const $ = (id) => document.getElementById(id);
 
@@ -2757,8 +2785,11 @@
       const chatId = chatIdFor(currentUser.uid, peer.uid);
       const chatRef = doc(db, "chats", chatId);
 
-      const now = serverTimestamp();
-
+      /*
+       * FIX: открытие существующего диалога не должно перезаписывать
+       * lastMessage/updatedAt в списке чатов и не должно блокировать
+       * загрузку сообщений. Здесь только гарантируем существование chat-doc.
+       */
       await setDoc(chatRef, {
         id: chatId,
         members: [currentUser.uid, peer.uid],
@@ -2774,16 +2805,8 @@
           [currentUser.uid]: myProfile.avatar || "",
           [peer.uid]: peer.avatar || ""
         },
-        updatedAt: now
+        createdAt: serverTimestamp()
       }, { merge: true });
-
-      await updateUserChatIndexes({
-        chatId,
-        peer,
-        lastMessage: "",
-        lastSenderId: "",
-        updatedAt: now
-      });
 
       return chatId;
     }
@@ -2793,6 +2816,9 @@
       activeChatId =
         knownChatId ||
         chatIdFor(currentUser.uid, peer.uid);
+
+      const openingChatId = activeChatId;
+      const openingPeerUid = peer.uid;
 
       $("chatScreen").classList.add("visible");
       document.body.style.overflow = "hidden";
@@ -2811,12 +2837,20 @@
       activeMessagesUnsubscribe?.();
       activePeerUnsubscribe?.();
 
+      /*
+       * FIX: подписки запускаются сразу. Раньше код сначала ждал ensureChat(),
+       * а если Firestore write/index подвисал, сообщения не появлялись 30-60 секунд.
+       */
       activePeerUnsubscribe = onSnapshot(
         doc(db, "users", peer.uid),
         (snapshot) => {
           if (!snapshot.exists()) return;
+          if (activeChatId !== openingChatId) return;
 
-          activePeer = snapshot.data();
+          activePeer = {
+            uid: peer.uid,
+            ...snapshot.data()
+          };
 
           renderAvatarSlot(
             $("chatHeaderAvatarSlot"),
@@ -2829,36 +2863,36 @@
             activePeer.username;
 
           updateChatStatus(activePeer);
+        },
+        (error) => {
+          console.warn("Не удалось загрузить профиль собеседника:", error);
         }
       );
 
-      try {
-        await ensureChat(peer);
-      } catch (error) {
-        console.warn("Не удалось подготовить чат:", error);
-      }
-
-      if (!activePeer || activePeer.uid !== peer.uid) {
-        return;
-      }
-
       activeChatUnsubscribe = onSnapshot(
-        doc(db, "chats", activeChatId),
+        doc(db, "chats", openingChatId),
         (snapshot) => {
+          if (activeChatId !== openingChatId) return;
           if (!snapshot.exists()) return;
           updateTypingStatus(snapshot.data());
+        },
+        (error) => {
+          console.warn("Не удалось загрузить статус чата:", error);
         }
       );
 
       const messagesQuery = query(
-        collection(db, "chats", activeChatId, "messages"),
+        collection(db, "chats", openingChatId, "messages"),
         orderBy("createdAt", "asc"),
         limit(200)
       );
 
       activeMessagesUnsubscribe = onSnapshot(
         messagesQuery,
-        async (snapshot) => {
+        (snapshot) => {
+          if (activeChatId !== openingChatId) return;
+          if (!activePeer || activePeer.uid !== openingPeerUid) return;
+
           renderMessages(
             snapshot.docs.map((messageDoc) => ({
               id: messageDoc.id,
@@ -2866,9 +2900,28 @@
             }))
           );
 
-          await markMessagesRead(snapshot.docs);
+          /*
+           * FIX: отметка прочтения не блокирует отрисовку.
+           * Ошибки гасим внутри markMessagesRead.
+           */
+          markMessagesRead(snapshot.docs);
+        },
+        (error) => {
+          console.warn("Не удалось загрузить сообщения:", error);
+          if (activeChatId === openingChatId) {
+            $("messages").innerHTML =
+              '<div class="empty">Не удалось загрузить сообщения</div>';
+          }
         }
       );
+
+      /*
+       * Создание chat-doc выполняется в фоне. Для уже существующего чата
+       * сообщения грузятся без ожидания этой операции.
+       */
+      ensureChat(peer).catch((error) => {
+        console.warn("Не удалось подготовить чат:", error);
+      });
     }
 
     function closeChat() {
@@ -3344,9 +3397,11 @@
     }
 
     async function markMessagesRead(messageDocs) {
-      if (!activeChatId || !currentUser) return;
+      if (!activeChatId || !currentUser || !messageDocs?.length) return;
 
-      const updates = [];
+      const chatId = activeChatId;
+      const batch = writeBatch(db);
+      let changed = 0;
 
       for (const messageDoc of messageDocs) {
         const message = messageDoc.data();
@@ -3354,16 +3409,22 @@
         if (message.senderId === currentUser.uid) continue;
         if (Array.isArray(message.seenBy) && message.seenBy.includes(currentUser.uid)) continue;
 
-        updates.push(updateDoc(
-          doc(db, "chats", activeChatId, "messages", messageDoc.id),
+        batch.update(
+          doc(db, "chats", chatId, "messages", messageDoc.id),
           {
             seenBy: arrayUnion(currentUser.uid),
             readAt: serverTimestamp()
           }
-        ).catch(() => {}));
+        );
+
+        changed++;
       }
 
-      await Promise.all(updates);
+      if (!changed) return;
+
+      await batch.commit().catch((error) => {
+        console.warn("Не удалось отметить сообщения прочитанными:", error);
+      });
     }
 
     function escapeHtml(value) {
