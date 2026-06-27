@@ -1767,7 +1767,6 @@
     }
 
     .profile-bio-field {
-      position: relative;
       width: 100%;
       margin-bottom: 10px;
     }
@@ -1777,18 +1776,15 @@
       max-height: 112px;
       margin-bottom: 0 !important;
       padding-top: 12px;
-      padding-right: 58px;
-      padding-bottom: 25px;
+      padding-right: 14px;
+      padding-bottom: 12px;
       resize: none;
       line-height: 1.3;
     }
 
     .profile-counter {
-      position: absolute;
-      right: 13px;
-      bottom: 10px;
-      width: auto;
-      margin: 0;
+      width: 100%;
+      margin: 5px 2px 0 0;
       color: var(--muted);
       font-size: 12px;
       line-height: 1;
@@ -1846,6 +1842,72 @@
       line-height: 1.35;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+    }
+
+
+    /* Финальные правки интерфейса чата */
+    .topbar {
+      gap: 3px !important;
+    }
+
+    #settingsButton {
+      margin-right: -5px;
+    }
+
+    .chat-shell {
+      position: relative;
+    }
+
+    .bubble-line.media-only {
+      display: flex !important;
+      justify-content: flex-end !important;
+      width: 100%;
+      min-height: 13px;
+      margin-top: -2px;
+    }
+
+    .message-row.me .bubble-line.media-only .meta {
+      margin-left: 0 !important;
+      justify-content: flex-end !important;
+    }
+
+    .scroll-down-button {
+      position: absolute;
+      right: max(12px, env(safe-area-inset-right));
+      bottom: calc(72px + env(safe-area-inset-bottom));
+      z-index: 40;
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(238,238,238,.96);
+      color: #111111;
+      box-shadow: 0 10px 28px rgba(0,0,0,.32);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px) scale(.92);
+      transition: opacity .16s ease, visibility .16s ease, transform .16s ease;
+    }
+
+    .scroll-down-button.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .scroll-down-button:active {
+      transform: translateY(0) scale(.92);
+    }
+
+    .scroll-down-button svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
 
@@ -1923,6 +1985,12 @@
       </header>
 
       <div id="messages" class="messages"></div>
+
+      <button id="scrollDownButton" class="scroll-down-button" type="button" aria-label="К новым сообщениям">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 9l6 6 6-6"></path>
+        </svg>
+      </button>
 
       <footer class="composer-wrap">
         <div id="composerReply" class="composer-reply">
@@ -2141,6 +2209,7 @@
     let selectedAttachment = null;
     let replyTarget = null;
     let currentMessages = new Map();
+    let lastRenderedMessageIds = [];
     let contextMessageId = null;
     let longPressTimer = null;
     let longPressStart = null;
@@ -2462,14 +2531,31 @@
     async function saveProfile(usernameValue, avatarValue, bioValue = "") {
       const username = cleanUsername(usernameValue);
       const bio = cleanBio(bioValue);
+      const previousUsername = myProfile?.username || "";
+      const usernameChanged = previousUsername.toLowerCase() !== username.toLowerCase();
 
       if (!USERNAME_PATTERN.test(username)) {
         throw new Error("Юзернейм: английские буквы, цифры 1–9 и _, максимум 16 символов.");
       }
 
-      await reserveUsername(currentUser.uid, username, myProfile?.username || "");
+      if (usernameChanged) {
+        await reserveUsername(currentUser.uid, username, previousUsername);
+      }
 
-      await setDoc(doc(db, "users", currentUser.uid), {
+      const optimisticProfile = {
+        ...(myProfile || {}),
+        uid: currentUser.uid,
+        username,
+        usernameLower: username.toLowerCase(),
+        avatar: avatarValue || "",
+        bio,
+        updatedAt: new Date()
+      };
+
+      myProfile = optimisticProfile;
+      renderAvatarSlot($("profileAvatarSlot"), { avatar: myProfile.avatar, username: myProfile.username }, 96, "profile-avatar");
+
+      setDoc(doc(db, "users", currentUser.uid), {
         uid: currentUser.uid,
         username,
         usernameLower: username.toLowerCase(),
@@ -2477,9 +2563,16 @@
         bio,
         lastSeen: serverTimestamp(),
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }, { merge: true }).catch((error) => {
+        console.warn("Профиль не успел сохраниться в фоне:", error);
+      });
 
-      myProfile = (await getDoc(doc(db, "users", currentUser.uid))).data();
+      /* Обновляем карточки диалогов в фоне, чтобы модальное окно не висело после нажатия «Сохранить». */
+      refreshMyChatIndexProfile(username, avatarValue || "").catch((error) => {
+        console.warn("Не удалось быстро обновить аватар/имя в диалогах:", error);
+      });
+
+      return myProfile;
     }
 
     async function heartbeat() {
@@ -2591,6 +2684,30 @@
         lastSenderId: payload.lastSenderId || "",
         updatedAt: payload.updatedAt || serverTimestamp()
       };
+    }
+
+    async function refreshMyChatIndexProfile(username, avatar) {
+      if (!currentUser) return;
+
+      const userChatsRef = collection(db, "users", currentUser.uid, "chats");
+      const snapshot = await getDocs(query(userChatsRef, limit(80)));
+      if (snapshot.empty) return;
+
+      const batch = writeBatch(db);
+
+      snapshot.docs.forEach((chatDoc) => {
+        const chatId = chatDoc.id;
+        batch.set(doc(db, "chats", chatId), {
+          usernames: {
+            [currentUser.uid]: username
+          },
+          avatars: {
+            [currentUser.uid]: avatar || ""
+          }
+        }, { merge: true });
+      });
+
+      await batch.commit();
     }
 
     async function updateUserChatIndexes({
@@ -3073,6 +3190,8 @@
       document.body.style.overflow = "hidden";
 
       $("messages").innerHTML = "";
+      lastRenderedMessageIds = [];
+      updateScrollDownButton();
       $("chatUsername").textContent = peer.username;
       renderAvatarSlot(
         $("chatHeaderAvatarSlot"),
@@ -3203,6 +3322,8 @@
       activePeer = null;
       activeChatId = null;
       currentMessages.clear();
+      lastRenderedMessageIds = [];
+      updateScrollDownButton();
       clearReply();
       closeMessageMenu();
 
@@ -3237,14 +3358,55 @@
       updateChatStatus(activePeer);
     }
 
+    function getBottomDistance() {
+      const container = $("messages");
+      return Math.max(0, container.scrollHeight - container.scrollTop - container.clientHeight);
+    }
+
+    function isNearChatBottom(threshold = 150) {
+      return getBottomDistance() <= threshold;
+    }
+
+    function scrollMessagesToBottom(behavior = "auto") {
+      const container = $("messages");
+      const apply = () => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior
+        });
+        updateScrollDownButton();
+      };
+
+      requestAnimationFrame(() => {
+        apply();
+        setTimeout(apply, 80);
+        setTimeout(apply, 240);
+      });
+    }
+
+    function updateScrollDownButton() {
+      const button = $("scrollDownButton");
+      if (!button) return;
+
+      const visible = $("chatScreen").classList.contains("visible") && getBottomDistance() > 190;
+      button.classList.toggle("visible", visible);
+    }
+
     function renderMessages(messages) {
       const container = $("messages");
-      const shouldStick =
-        container.scrollHeight - container.scrollTop - container.clientHeight < 140;
+      const wasEmpty = container.children.length === 0;
+      const wasNearBottom = isNearChatBottom(190);
+      const previousBottomDistance = getBottomDistance();
+      const previousIds = lastRenderedMessageIds.join("|");
+      const nextIds = messages.map((message) => message.id).join("|");
+      const hasNewMessage = previousIds !== nextIds && messages.length >= lastRenderedMessageIds.length;
+      const lastMessage = messages[messages.length - 1];
+      const lastMessageIsMine = lastMessage?.senderId === currentUser.uid;
 
       currentMessages = new Map(
         messages.map((message) => [message.id, message])
       );
+      lastRenderedMessageIds = messages.map((message) => message.id);
 
       container.innerHTML = "";
 
@@ -3270,7 +3432,10 @@
           ? renderMessageAttachment(message.attachment, message.id)
           : "";
 
-        const textContent = message.text
+        const hasMedia = Boolean(media);
+        const hasText = Boolean(message.text);
+
+        const textContent = hasText
           ? `<span class="bubble-text">${escapeHtml(message.text)}</span>`
           : "";
 
@@ -3295,12 +3460,13 @@
           : "";
 
         const reactions = renderReactions(message);
+        const bubbleLineClass = `bubble-line ${isMine && hasMedia && !hasText ? "media-only" : ""}`;
 
         row.innerHTML = `
           <div class="bubble">
             ${reply}
             ${media}
-            <div class="bubble-line">${textContent}<span class="meta">
+            <div class="${bubbleLineClass}">${textContent}<span class="meta">
               <span>${formatTime(message.createdAt)}</span>${checks}
             </span></div>
             ${reactions}
@@ -3311,9 +3477,14 @@
         container.appendChild(row);
       }
 
-      if (shouldStick) {
+      const shouldGoBottom = wasEmpty || wasNearBottom || (hasNewMessage && lastMessageIsMine);
+
+      if (shouldGoBottom) {
+        scrollMessagesToBottom("auto");
+      } else {
         requestAnimationFrame(() => {
-          container.scrollTop = container.scrollHeight;
+          container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight - previousBottomDistance);
+          updateScrollDownButton();
         });
       }
     }
@@ -3740,6 +3911,7 @@
         }
 
         await addDoc(collection(db, "chats", activeChatId, "messages"), message);
+        scrollMessagesToBottom("auto");
 
         const listPreview =
           selectedAttachment
@@ -3755,7 +3927,7 @@
 
         const listUpdatedAt = serverTimestamp();
 
-        await setDoc(doc(db, "chats", activeChatId), {
+        setDoc(doc(db, "chats", activeChatId), {
           lastMessage: listPreview,
           lastSenderId: currentUser.uid,
           updatedAt: listUpdatedAt,
@@ -3772,14 +3944,18 @@
             [currentUser.uid]: myProfile.avatar || "",
             [activePeer.uid]: activePeer.avatar || ""
           }
-        }, { merge: true });
+        }, { merge: true }).catch((error) => {
+          console.warn("Не удалось быстро обновить чат:", error);
+        });
 
-        await updateUserChatIndexes({
+        updateUserChatIndexes({
           chatId: activeChatId,
           peer: activePeer,
           lastMessage: listPreview,
           lastSenderId: currentUser.uid,
           updatedAt: listUpdatedAt
+        }).catch((error) => {
+          console.warn("Не удалось быстро обновить список диалогов:", error);
         });
 
         $("messageInput").value = "";
@@ -4252,6 +4428,24 @@
     });
 
     $("sendButton").addEventListener("click", sendMessage);
+
+    $("scrollDownButton").addEventListener("click", () => {
+      scrollMessagesToBottom("smooth");
+    });
+
+    $("messages").addEventListener("scroll", updateScrollDownButton, { passive: true });
+
+    $("messages").addEventListener("load", (event) => {
+      if (event.target?.classList?.contains("bubble-media") && isNearChatBottom(260)) {
+        scrollMessagesToBottom("auto");
+      }
+    }, true);
+
+    $("messages").addEventListener("loadedmetadata", (event) => {
+      if (event.target?.classList?.contains("bubble-media") && isNearChatBottom(260)) {
+        scrollMessagesToBottom("auto");
+      }
+    }, true);
 
     $("clearReplyButton").addEventListener("click", () => {
       clearReply();
