@@ -1749,9 +1749,9 @@
     }
 
 
-    /* FIX: финальные цвета сообщений и галочек */
+    /* Финальные правки: наши сообщения темнее, галочки одного цвета со временем */
     .message-row.me .bubble {
-      background: #d7d7d7 !important;
+      background: #c4c4c4 !important;
       color: #111111 !important;
     }
 
@@ -1759,14 +1759,68 @@
       color: rgba(0,0,0,.48) !important;
     }
 
-    .message-row.me .checks-one {
-      color: rgba(0,0,0,.45) !important;
-    }
-
+    .message-row.me .checks,
+    .message-row.me .checks-one,
     .message-row.me .checks-seen,
     .chat-list-time .checks-seen {
-      color: #ffffff !important;
+      color: currentColor !important;
     }
+
+    .profile-bio-input {
+      min-height: 74px;
+      max-height: 112px;
+      padding-top: 12px;
+      padding-bottom: 12px;
+      resize: none;
+      line-height: 1.3;
+    }
+
+    .profile-counter {
+      width: 100%;
+      margin: -4px 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .peer-profile-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .peer-profile-avatar {
+      width: 96px !important;
+      height: 96px !important;
+      min-width: 96px !important;
+      border-radius: 50%;
+      object-fit: cover;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .peer-profile-name {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 21px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .peer-profile-bio {
+      width: 100%;
+      min-height: 22px;
+      margin: 10px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
 
   </style>
 </head>
@@ -1896,11 +1950,25 @@
           <input id="avatarInput" class="hidden" type="file" accept="image/png,image/jpeg,image/webp">
         </div>
         <input id="profileUsernameInput" class="field" type="text" maxlength="16" placeholder="@username" autocomplete="off" autocapitalize="none" spellcheck="false">
+        <textarea id="profileBioInput" class="field profile-bio-input" maxlength="100" rows="3" placeholder="О себе — до 100 символов"></textarea>
+        <div id="profileBioCounter" class="profile-counter">0/100</div>
         <div id="profileHint" class="hint"></div>
         <div class="row">
           <button id="closeProfileButton" class="btn" type="button">Закрыть</button>
           <button id="saveProfileButton" class="btn primary" type="button">Сохранить</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="peerProfileModal" class="modal-overlay">
+    <div class="modal">
+      <div class="handle"></div>
+      <div class="peer-profile-view">
+        <div id="peerProfileAvatarSlot"></div>
+        <div id="peerProfileUsername" class="peer-profile-name"></div>
+        <div id="peerProfileBio" class="peer-profile-bio"></div>
+        <button id="closePeerProfileButton" class="btn primary" type="button" style="width:100%;margin-top:4px">Закрыть</button>
       </div>
     </div>
   </div>
@@ -1983,6 +2051,7 @@
 
     import {
       initializeFirestore,
+      getDocsFromCache,
       doc,
       getDoc,
       getDocs,
@@ -2006,9 +2075,8 @@
     const auth = getAuth(firebaseApp);
 
     /*
-     * FIX: на GitHub Pages / некоторых мобильных сетях стандартный
-     * Firestore WebChannel иногда отдаёт первый onSnapshot через 30-60 секунд.
-     * Авто long-polling убирает эту задержку и делает загрузку чата стабильнее.
+     * На GitHub Pages Firestore WebChannel иногда долго открывает первый поток.
+     * Long-polling делает первый onSnapshot стабильнее на мобильных сетях, VPN и браузерах с блокировками.
      */
     const db = initializeFirestore(firebaseApp, {
       experimentalAutoDetectLongPolling: true,
@@ -2023,6 +2091,7 @@
     let currentUser = null;
     let myProfile = null;
     let pendingAvatar = "";
+    let pendingBio = "";
     let foundProfile = null;
     let activePeer = null;
     let activeChatId = null;
@@ -2094,6 +2163,26 @@
         .slice(0, 16);
     }
 
+    function cleanBio(value) {
+      return String(value || "")
+        .replace(/\r/g, "")
+        .trim()
+        .slice(0, 100);
+    }
+
+    function updateProfileBioCounter() {
+      const input = $("profileBioInput");
+      const counter = $("profileBioCounter");
+
+      if (!input || !counter) return;
+
+      if (input.value.length > 100) {
+        input.value = input.value.slice(0, 100);
+      }
+
+      counter.textContent = `${input.value.length}/100`;
+    }
+
     function chatIdFor(uidA, uidB) {
       return [uidA, uidB].sort().join("_");
     }
@@ -2104,7 +2193,15 @@
     }
 
     function formatTime(dateLike) {
-      const date = dateLike?.toDate?.() || new Date();
+      const date =
+        dateLike?.toDate?.() ||
+        (typeof dateLike?.seconds === "number"
+          ? new Date(dateLike.seconds * 1000)
+          : null) ||
+        (typeof dateLike === "number"
+          ? new Date(dateLike)
+          : null) ||
+        new Date();
       return date.toLocaleTimeString("ru-RU", {
         hour: "2-digit",
         minute: "2-digit"
@@ -2310,6 +2407,7 @@
             username: candidate,
             usernameLower: candidate.toLowerCase(),
             avatar: "",
+            bio: "",
             lastSeen: serverTimestamp(),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -2325,8 +2423,9 @@
       throw new Error("Не удалось создать профиль.");
     }
 
-    async function saveProfile(usernameValue, avatarValue) {
+    async function saveProfile(usernameValue, avatarValue, bioValue = "") {
       const username = cleanUsername(usernameValue);
+      const bio = cleanBio(bioValue);
 
       if (!USERNAME_PATTERN.test(username)) {
         throw new Error("Юзернейм: английские буквы, цифры 1–9 и _, максимум 16 символов.");
@@ -2339,6 +2438,7 @@
         username,
         usernameLower: username.toLowerCase(),
         avatar: avatarValue || "",
+        bio,
         lastSeen: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
@@ -2464,6 +2564,8 @@
       lastSenderId = "",
       updatedAt = serverTimestamp()
     }) {
+      if (!currentUser || !peer?.uid) return;
+
       const batch = writeBatch(db);
 
       batch.set(
@@ -2786,9 +2888,8 @@
       const chatRef = doc(db, "chats", chatId);
 
       /*
-       * FIX: открытие существующего диалога не должно перезаписывать
-       * lastMessage/updatedAt в списке чатов и не должно блокировать
-       * загрузку сообщений. Здесь только гарантируем существование chat-doc.
+       * Важно: открытие существующего чата не должно ждать записи в Firestore
+       * и не должно затирать lastMessage/updatedAt пустыми значениями.
        */
       await setDoc(chatRef, {
         id: chatId,
@@ -2811,11 +2912,40 @@
       return chatId;
     }
 
+    function messagesCacheKey(chatId) {
+      return `uc_messages_${chatId}`;
+    }
+
+    function renderMessagesFromCache(chatId) {
+      try {
+        const raw = localStorage.getItem(messagesCacheKey(chatId));
+        if (!raw) return false;
+
+        const cached = JSON.parse(raw);
+        if (!Array.isArray(cached)) return false;
+
+        renderMessages(cached);
+        return cached.length > 0;
+      } catch (error) {
+        console.warn("Не удалось прочитать кэш сообщений:", error);
+        return false;
+      }
+    }
+
+    function saveMessagesToCache(chatId, messages) {
+      try {
+        localStorage.setItem(
+          messagesCacheKey(chatId),
+          JSON.stringify(messages.slice(-200))
+        );
+      } catch (error) {
+        console.warn("Не удалось сохранить кэш сообщений:", error);
+      }
+    }
+
     async function openChat(peer, knownChatId = null) {
       activePeer = peer;
-      activeChatId =
-        knownChatId ||
-        chatIdFor(currentUser.uid, peer.uid);
+      activeChatId = knownChatId || chatIdFor(currentUser.uid, peer.uid);
 
       const openingChatId = activeChatId;
       const openingPeerUid = peer.uid;
@@ -2837,20 +2967,20 @@
       activeMessagesUnsubscribe?.();
       activePeerUnsubscribe?.();
 
-      /*
-       * FIX: подписки запускаются сразу. Раньше код сначала ждал ensureChat(),
-       * а если Firestore write/index подвисал, сообщения не появлялись 30-60 секунд.
-       */
+      activeChatUnsubscribe = null;
+      activeMessagesUnsubscribe = null;
+      activePeerUnsubscribe = null;
+
+      /* Мгновенная отрисовка последнего локального снимка, пока Firestore открывает поток. */
+      renderMessagesFromCache(openingChatId);
+
       activePeerUnsubscribe = onSnapshot(
         doc(db, "users", peer.uid),
         (snapshot) => {
           if (!snapshot.exists()) return;
           if (activeChatId !== openingChatId) return;
 
-          activePeer = {
-            uid: peer.uid,
-            ...snapshot.data()
-          };
+          activePeer = { uid: peer.uid, ...snapshot.data() };
 
           renderAvatarSlot(
             $("chatHeaderAvatarSlot"),
@@ -2859,9 +2989,7 @@
             "chat-header-avatar"
           );
 
-          $("chatUsername").textContent =
-            activePeer.username;
-
+          $("chatUsername").textContent = activePeer.username || peer.username;
           updateChatStatus(activePeer);
         },
         (error) => {
@@ -2887,38 +3015,58 @@
         limit(200)
       );
 
+      const applyMessagesSnapshot = (snapshot, shouldMarkRead = false) => {
+        if (activeChatId !== openingChatId) return;
+        if (!activePeer || activePeer.uid !== openingPeerUid) return;
+
+        const messages = snapshot.docs.map((messageDoc) => ({
+          id: messageDoc.id,
+          ...messageDoc.data()
+        }));
+
+        renderMessages(messages);
+        saveMessagesToCache(openingChatId, messages);
+
+        if (shouldMarkRead) {
+          markMessagesRead(openingChatId, snapshot.docs);
+        }
+      };
+
+      /*
+       * Сначала мгновенно пробуем кэш Firestore, затем отдельный getDocs.
+       * Часто getDocs приходит раньше первого realtime-потока onSnapshot.
+       */
+      getDocsFromCache(messagesQuery)
+        .then((snapshot) => {
+          if (!snapshot.empty) applyMessagesSnapshot(snapshot, false);
+        })
+        .catch(() => {});
+
+      getDocs(messagesQuery)
+        .then((snapshot) => {
+          applyMessagesSnapshot(snapshot, true);
+        })
+        .catch((error) => {
+          console.warn("Быстрая загрузка сообщений не сработала:", error);
+        });
+
       activeMessagesUnsubscribe = onSnapshot(
         messagesQuery,
+        { includeMetadataChanges: true },
         (snapshot) => {
-          if (activeChatId !== openingChatId) return;
-          if (!activePeer || activePeer.uid !== openingPeerUid) return;
-
-          renderMessages(
-            snapshot.docs.map((messageDoc) => ({
-              id: messageDoc.id,
-              ...messageDoc.data()
-            }))
-          );
-
-          /*
-           * FIX: отметка прочтения не блокирует отрисовку.
-           * Ошибки гасим внутри markMessagesRead.
-           */
-          markMessagesRead(snapshot.docs);
+          /* Прочтение — строго фоном, не блокирует показ сообщений. */
+          applyMessagesSnapshot(snapshot, true);
         },
         (error) => {
           console.warn("Не удалось загрузить сообщения:", error);
-          if (activeChatId === openingChatId) {
+          if (activeChatId === openingChatId && !$("messages").children.length) {
             $("messages").innerHTML =
               '<div class="empty">Не удалось загрузить сообщения</div>';
           }
         }
       );
 
-      /*
-       * Создание chat-doc выполняется в фоне. Для уже существующего чата
-       * сообщения грузятся без ожидания этой операции.
-       */
+      /* Chat-doc создаётся в фоне. Для существующих чатов история грузится без ожидания записи. */
       ensureChat(peer).catch((error) => {
         console.warn("Не удалось подготовить чат:", error);
       });
@@ -3309,7 +3457,10 @@
     async function deleteSelectedMessage() {
       if (!contextMessageId || !activeChatId) return;
 
-      const message = currentMessages.get(contextMessageId);
+      const deletingId = contextMessageId;
+      const deletingChatId = activeChatId;
+      const deletingPeer = activePeer ? { ...activePeer } : null;
+      const message = currentMessages.get(deletingId);
 
       if (!message || message.senderId !== currentUser.uid) {
         closeMessageMenu();
@@ -3322,19 +3473,20 @@
 
       if (!confirmed) return;
 
-      const deletingId = contextMessageId;
       closeMessageMenu();
 
       try {
         await deleteDoc(
-          doc(db, "chats", activeChatId, "messages", deletingId)
+          doc(db, "chats", deletingChatId, "messages", deletingId)
         );
+
+        currentMessages.delete(deletingId);
 
         const remaining = [...currentMessages.values()]
           .filter((item) => item.id !== deletingId)
           .sort((a, b) => {
-            const aTime = a.createdAt?.toMillis?.() || 0;
-            const bTime = b.createdAt?.toMillis?.() || 0;
+            const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+            const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
             return bTime - aTime;
           });
 
@@ -3352,7 +3504,7 @@
         const latestUpdatedAt = serverTimestamp();
 
         await setDoc(
-          doc(db, "chats", activeChatId),
+          doc(db, "chats", deletingChatId),
           {
             lastMessage: latestPreview,
             lastSenderId: latest?.senderId || "",
@@ -3361,13 +3513,17 @@
           { merge: true }
         );
 
-        await updateUserChatIndexes({
-          chatId: activeChatId,
-          peer: activePeer,
-          lastMessage: latestPreview,
-          lastSenderId: latest?.senderId || "",
-          updatedAt: latestUpdatedAt
-        });
+        if (deletingPeer) {
+          await updateUserChatIndexes({
+            chatId: deletingChatId,
+            peer: deletingPeer,
+            lastMessage: latestPreview,
+            lastSenderId: latest?.senderId || "",
+            updatedAt: latestUpdatedAt
+          }).catch((error) => {
+            console.warn("Не удалось обновить список диалогов после удаления:", error);
+          });
+        }
 
         if (replyTarget?.id === deletingId) {
           clearReply();
@@ -3375,7 +3531,8 @@
 
         playCloseSound();
       } catch (error) {
-        alert(getReadableError(error));
+        console.warn("Не удалось удалить сообщение:", error);
+        alert("Не удалось удалить сообщение. Обновите страницу и попробуйте ещё раз.");
       }
     }
 
@@ -3396,10 +3553,9 @@
       }
     }
 
-    async function markMessagesRead(messageDocs) {
-      if (!activeChatId || !currentUser || !messageDocs?.length) return;
+    async function markMessagesRead(chatId, messageDocs) {
+      if (!chatId || !currentUser || !messageDocs?.length) return;
 
-      const chatId = activeChatId;
       const batch = writeBatch(db);
       let changed = 0;
 
@@ -3561,10 +3717,28 @@
 
     function openProfile() {
       pendingAvatar = myProfile?.avatar || "";
-      renderAvatarSlot($("profileAvatarSlot"), { avatar: pendingAvatar }, 96, "profile-avatar");
+      pendingBio = myProfile?.bio || "";
+      renderAvatarSlot($("profileAvatarSlot"), { avatar: pendingAvatar, username: myProfile?.username }, 96, "profile-avatar");
       $("profileUsernameInput").value = myProfile ? "@" + myProfile.username : "";
+      $("profileBioInput").value = pendingBio;
+      updateProfileBioCounter();
       showHint($("profileHint"), "");
       openModal($("profileModal"));
+    }
+
+    function openPeerProfile() {
+      if (!activePeer) return;
+
+      renderAvatarSlot(
+        $("peerProfileAvatarSlot"),
+        activePeer,
+        96,
+        "peer-profile-avatar"
+      );
+
+      $("peerProfileUsername").textContent = "@" + (activePeer.username || "user");
+      $("peerProfileBio").textContent = activePeer.bio || "Нет описания";
+      openModal($("peerProfileModal"));
     }
 
     function openSettings() {
@@ -3607,11 +3781,12 @@
     $("settingsButton").addEventListener("click", openSettings);
 
     $("closeProfileButton").addEventListener("click", () => closeModal($("profileModal")));
+    $("closePeerProfileButton").addEventListener("click", () => closeModal($("peerProfileModal")));
     $("closeSettingsButton").addEventListener("click", () => closeModal($("settingsModal")));
 
     $("saveProfileButton").addEventListener("click", async () => {
       try {
-        await saveProfile($("profileUsernameInput").value, pendingAvatar);
+        await saveProfile($("profileUsernameInput").value, pendingAvatar, $("profileBioInput").value);
         closeModal($("profileModal"));
       } catch (error) {
         showHint($("profileHint"), getReadableError(error), true);
@@ -3622,6 +3797,8 @@
       const username = cleanUsername($("profileUsernameInput").value);
       $("profileUsernameInput").value = username ? "@" + username : "";
     });
+
+    $("profileBioInput").addEventListener("input", updateProfileBioCounter);
 
     $("avatarInput").addEventListener("change", async () => {
       const file = $("avatarInput").files[0];
@@ -3655,6 +3832,7 @@
 
     $("chatHeaderAvatarButton").addEventListener("click", () => {
       playClick();
+      openPeerProfile();
     });
 
     $("messageInput").addEventListener("input", () => {
