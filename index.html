@@ -1881,13 +1881,14 @@
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: rgba(238,238,238,.96);
-      color: #111111;
-      box-shadow: 0 10px 28px rgba(0,0,0,.32);
+      background: rgba(238,238,238,.38);
+      color: rgba(17,17,17,.72);
+      box-shadow: 0 10px 26px rgba(0,0,0,.24);
       opacity: 0;
       visibility: hidden;
       transform: translateY(8px) scale(.92);
       transition: opacity .16s ease, visibility .16s ease, transform .16s ease;
+      will-change: opacity, transform;
     }
 
     .scroll-down-button.visible {
@@ -3369,18 +3370,27 @@
 
     function scrollMessagesToBottom(behavior = "auto") {
       const container = $("messages");
+
       const apply = () => {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior
-        });
+        if (behavior === "auto") {
+          container.scrollTop = container.scrollHeight;
+        } else {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior
+          });
+        }
+
         updateScrollDownButton();
       };
 
+      /* Первый скролл делаем синхронно, чтобы при открытии чата не было видимого прыжка сверху вниз. */
+      apply();
+
       requestAnimationFrame(() => {
         apply();
-        setTimeout(apply, 80);
-        setTimeout(apply, 240);
+        setTimeout(apply, 60);
+        setTimeout(apply, 180);
       });
     }
 
@@ -3480,6 +3490,10 @@
       const shouldGoBottom = wasEmpty || wasNearBottom || (hasNewMessage && lastMessageIsMine);
 
       if (shouldGoBottom) {
+        /* При первой отрисовке сразу ставим scrollTop в конец до следующего кадра. */
+        if (wasEmpty) {
+          container.scrollTop = container.scrollHeight;
+        }
         scrollMessagesToBottom("auto");
       } else {
         requestAnimationFrame(() => {
@@ -3883,11 +3897,24 @@
     }
 
     async function sendMessage() {
-      const text = $("messageInput").value.trim();
+      const input = $("messageInput");
+      const text = input.value.trim();
+      const attachmentForSend = selectedAttachment;
+      const replyForSend = replyTarget;
+      const chatIdForSend = activeChatId;
+      const peerForSend = activePeer;
 
-      if (!activeChatId || (!text && !selectedAttachment)) return;
+      if (!chatIdForSend || (!text && !attachmentForSend) || !peerForSend) return;
 
       $("sendButton").disabled = true;
+
+      /* Очищаем поле сразу, а не после ответа Firestore — так текст не висит в инпуте во время отправки. */
+      input.value = "";
+      resizeMessageInput();
+      clearAttachment();
+      clearReply();
+      updateSendButton();
+      scrollMessagesToBottom("auto");
 
       try {
         const message = {
@@ -3897,29 +3924,29 @@
           seenBy: [currentUser.uid]
         };
 
-        if (selectedAttachment) {
-          message.attachment = selectedAttachment;
+        if (attachmentForSend) {
+          message.attachment = attachmentForSend;
         }
 
-        if (replyTarget) {
+        if (replyForSend) {
           message.reply = {
-            id: replyTarget.id,
-            senderId: replyTarget.senderId,
-            text: replyTarget.text || "",
-            attachmentType: replyTarget.attachment?.type || ""
+            id: replyForSend.id,
+            senderId: replyForSend.senderId,
+            text: replyForSend.text || "",
+            attachmentType: replyForSend.attachment?.type || ""
           };
         }
 
-        await addDoc(collection(db, "chats", activeChatId, "messages"), message);
+        await addDoc(collection(db, "chats", chatIdForSend, "messages"), message);
         scrollMessagesToBottom("auto");
 
         const listPreview =
-          selectedAttachment
+          attachmentForSend
             ? (
                 text ||
-                (selectedAttachment.type?.startsWith("image/")
+                (attachmentForSend.type?.startsWith("image/")
                   ? "Фотография"
-                  : selectedAttachment.type?.startsWith("video/")
+                  : attachmentForSend.type?.startsWith("video/")
                     ? "Видео"
                     : "Вложение")
               )
@@ -3927,30 +3954,30 @@
 
         const listUpdatedAt = serverTimestamp();
 
-        setDoc(doc(db, "chats", activeChatId), {
+        setDoc(doc(db, "chats", chatIdForSend), {
           lastMessage: listPreview,
           lastSenderId: currentUser.uid,
           updatedAt: listUpdatedAt,
-          members: [currentUser.uid, activePeer.uid],
+          members: [currentUser.uid, peerForSend.uid],
           memberMap: {
             [currentUser.uid]: true,
-            [activePeer.uid]: true
+            [peerForSend.uid]: true
           },
           usernames: {
             [currentUser.uid]: myProfile.username,
-            [activePeer.uid]: activePeer.username
+            [peerForSend.uid]: peerForSend.username
           },
           avatars: {
             [currentUser.uid]: myProfile.avatar || "",
-            [activePeer.uid]: activePeer.avatar || ""
+            [peerForSend.uid]: peerForSend.avatar || ""
           }
         }, { merge: true }).catch((error) => {
           console.warn("Не удалось быстро обновить чат:", error);
         });
 
         updateUserChatIndexes({
-          chatId: activeChatId,
-          peer: activePeer,
+          chatId: chatIdForSend,
+          peer: peerForSend,
           lastMessage: listPreview,
           lastSenderId: currentUser.uid,
           updatedAt: listUpdatedAt
@@ -3958,14 +3985,22 @@
           console.warn("Не удалось быстро обновить список диалогов:", error);
         });
 
-        $("messageInput").value = "";
-        resizeMessageInput();
-        clearAttachment();
-        clearReply();
         playSendSound();
-
         setTyping(false);
       } catch (error) {
+        /* Если отправка реально не прошла — возвращаем текст обратно, чтобы пользователь его не потерял. */
+        if (text && !input.value.trim()) {
+          input.value = text;
+          resizeMessageInput();
+        }
+
+        if (attachmentForSend && !selectedAttachment) {
+          selectedAttachment = attachmentForSend;
+          $("attachmentName").textContent = attachmentForSend.name || "Вложение";
+          $("attachmentPreview").classList.add("visible");
+        }
+
+        updateSendButton();
         alert(getReadableError(error));
       } finally {
         updateSendButton();
@@ -4104,6 +4139,8 @@
 
     function getSupportedRecorderType() {
       const types = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
         "video/webm;codecs=vp9",
         "video/webm;codecs=vp8",
         "video/webm"
@@ -4133,7 +4170,8 @@
         };
 
         video.preload = "auto";
-        video.muted = true;
+        video.muted = false;
+        video.volume = 0.01;
         video.playsInline = true;
 
         video.onloadedmetadata = async () => {
@@ -4143,11 +4181,23 @@
             canvas.height = Math.max(2, Math.round((video.videoHeight || maxWidth) * scale));
 
             const stream = canvas.captureStream(fps);
+
+            /* Canvas даёт видео без звука, поэтому отдельно добавляем audio-track из исходного <video>. */
+            const sourceStream = typeof video.captureStream === "function"
+              ? video.captureStream()
+              : (typeof video.mozCaptureStream === "function" ? video.mozCaptureStream() : null);
+
+            const audioTracks = sourceStream?.getAudioTracks?.() || [];
+            for (const track of audioTracks) {
+              stream.addTrack(track);
+            }
+
             const mimeType = getSupportedRecorderType();
 
             recorder = new MediaRecorder(stream, {
               mimeType: mimeType || undefined,
-              videoBitsPerSecond: bitsPerSecond
+              videoBitsPerSecond: bitsPerSecond,
+              audioBitsPerSecond: audioTracks.length ? 24000 : undefined
             });
 
             recorder.ondataavailable = (event) => {
@@ -4180,7 +4230,14 @@
             }, Math.max(33, Math.round(1000 / fps)));
 
             recorder.start(650);
-            await video.play();
+
+            try {
+              await video.play();
+            } catch (playError) {
+              /* Если браузер заблокировал проигрывание со звуком, повторяем muted. Видео всё равно отправится. */
+              video.muted = true;
+              await video.play();
+            }
           } catch (error) {
             cleanup();
             reject(error);
